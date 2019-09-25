@@ -29,7 +29,6 @@ from lanenet_model import lanenet_postprocess
 
 CFG = global_config.cfg
 
-
 def init_args():
     """
 
@@ -92,7 +91,7 @@ def test_lanenet(image_path, weights_path):
 
     input_tensor = tf.placeholder(dtype=tf.float32, shape=[1, 256, 512, 3], name='input_tensor')
 
-    net = lanenet.LaneNet(phase='test', net_flag='vgg')
+    net = lanenet.LaneNet(net_flag='vgg', phase='test')
     binary_seg_ret, instance_seg_ret = net.inference(input_tensor=input_tensor, name='lanenet_model')
 
     postprocessor = lanenet_postprocess.LaneNetPostProcessor()
@@ -141,9 +140,9 @@ def test_lanenet(image_path, weights_path):
         plt.imshow(binary_seg_image[0] * 255, cmap='gray')
         plt.show()
 
-        cv2.imwrite('instance_mask_image.png', mask_image)
-        cv2.imwrite('source_image.png', postprocess_result['source_image'])
-        cv2.imwrite('binary_mask_image.png', binary_seg_image[0] * 255)
+        # cv2.imwrite('instance_mask_image.png', mask_image)
+        # cv2.imwrite('source_image.png', postprocess_result['source_image'])
+        # cv2.imwrite('binary_mask_image.png', binary_seg_image[0] * 255)
 
     sess.close()
 

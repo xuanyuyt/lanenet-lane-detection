@@ -79,7 +79,7 @@ def get_image_summary(img):
         img = tf.expand_dims(img, -1)
 
     image = img - tf.reduce_min(img)
-    image /= tf.reduce_max(img) - tf.reduce_min(img)
+    image /= (tf.reduce_max(img) - tf.reduce_min(img))
     image *= 255
 
     return image

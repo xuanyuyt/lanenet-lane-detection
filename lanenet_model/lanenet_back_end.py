@@ -66,10 +66,10 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                      name, reuse):
         """
         compute lanenet loss
-        :param binary_seg_logits:
-        :param binary_label:
-        :param instance_seg_logits:
-        :param instance_label:
+        :param binary_seg_logits: 256x512x2
+        :param binary_label: 256x512x1
+        :param instance_seg_logits: 256x512x64
+        :param instance_label: # 256x512x1
         :param name:
         :param reuse:
         :return:
@@ -85,7 +85,7 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                                binary_label.get_shape().as_list()[2]]),
                     depth=CFG.TRAIN.CLASSES_NUMS,
                     axis=-1
-                )
+                ) # 0/1 矩阵， 256x512x2
 
                 binary_label_plain = tf.reshape(
                     binary_label,
@@ -94,13 +94,13 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                            binary_label.get_shape().as_list()[2] *
                            binary_label.get_shape().as_list()[3]])
                 unique_labels, unique_id, counts = tf.unique_with_counts(binary_label_plain)
-                counts = tf.cast(counts, tf.float32)
+                counts = tf.cast(counts, tf.float32) # 每个类别的像素数量
                 inverse_weights = tf.divide(
                     1.0,
                     tf.log(tf.add(tf.divide(counts, tf.reduce_sum(counts)), tf.constant(1.02)))
-                )
+                ) # 1/log(counts/all_counts + 1.02)
 
-                binary_segmenatation_loss = self._compute_class_weighted_cross_entropy_loss(
+                binary_segmentation_loss = self._compute_class_weighted_cross_entropy_loss(
                     onehot_labels=binary_label_onehot,
                     logits=binary_seg_logits,
                     classes_weights=inverse_weights
@@ -123,24 +123,26 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                 instance_segmentation_loss, l_var, l_dist, l_reg = \
                     lanenet_discriminative_loss.discriminative_loss(
                         pix_embedding, instance_label, CFG.TRAIN.EMBEDDING_FEATS_DIMS,
-                        pix_image_shape, 0.5, 3.0, 1.0, 1.0, 0.001
+                        pix_image_shape, delta_v=0.5, delta_d=3.0, param_var=1.0, param_dist=1.0, param_reg=0.001
                     )
 
             l2_reg_loss = tf.constant(0.0, tf.float32)
             for vv in tf.trainable_variables():
-                if 'bn' in vv.name or 'gn' in vv.name:
+                if 'bn' in vv.name or 'batchnorm' in vv.name or 'batch_norm' in vv.name \
+                        and 'alpha' in vv.name or 'gn' in vv.name:
                     continue
                 else:
                     l2_reg_loss = tf.add(l2_reg_loss, tf.nn.l2_loss(vv))
             l2_reg_loss *= 0.001
-            total_loss = binary_segmenatation_loss + instance_segmentation_loss + l2_reg_loss
+            total_loss = binary_segmentation_loss + instance_segmentation_loss + l2_reg_loss
 
             ret = {
                 'total_loss': total_loss,
                 'binary_seg_logits': binary_seg_logits,
                 'instance_seg_logits': pix_embedding,
-                'binary_seg_loss': binary_segmenatation_loss,
-                'discriminative_loss': instance_segmentation_loss
+                'binary_seg_loss': binary_segmentation_loss,
+                'discriminative_loss': instance_segmentation_loss,
+                'l2_reg_loss': l2_reg_loss
             }
 
         return ret
@@ -174,3 +176,18 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                 )
 
         return binary_seg_prediction, instance_seg_prediction
+
+if __name__ == '__main__':
+    backend = LaneNetBackEnd(phase='train')
+    binary_seg_logits = tf.placeholder(dtype=tf.int64, shape=[1, 256, 512, 2], name='input')
+    binary_label = tf.placeholder(dtype=tf.int64, shape=[1, 256, 512, 1], name='label')
+    instance_seg_logits = tf.placeholder(dtype=tf.int64, shape=[1, 256, 512, 64], name='input')
+    instance_label = tf.placeholder(dtype=tf.float32, shape=[1, 256, 512, 1], name='label')
+    calculated_losses = backend.compute_loss(
+        binary_seg_logits=binary_seg_logits,
+        binary_label=binary_label,
+        instance_seg_logits=instance_seg_logits,
+        instance_label=instance_label,
+        name='backend',
+        reuse=tf.AUTO_REUSE
+    )

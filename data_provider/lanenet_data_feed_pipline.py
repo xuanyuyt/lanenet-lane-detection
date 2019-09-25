@@ -32,8 +32,8 @@ def init_args():
     :return:
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset_dir', type=str, default='../../TuSimple/training', help='The source nsfw data dir path')
-    parser.add_argument('--tfrecords_dir', type=str, default='../../TuSimple/training/tfrecords',help='The dir path to save converted tfrecords')
+    parser.add_argument('--dataset_dir', type=str, default='../../TuSimple', help='The source nsfw data dir path')
+    parser.add_argument('--tfrecords_dir', type=str, default='../../TuSimple/tfrecords',help='The dir path to save converted tfrecords')
 
     return parser.parse_args()
 
@@ -58,10 +58,10 @@ class LaneNetDataProducer(object):
         self._test_example_index_file_path = ops.join(self._dataset_dir, 'test.txt')
         self._val_example_index_file_path = ops.join(self._dataset_dir, 'val.txt')
 
-        if not self._is_source_data_complete():
-            raise ValueError('Source image data is not complete, '
-                             'please check if one of the image folder is not exist')
-
+        # if not self._is_source_data_complete():
+        #     raise ValueError('Source image data is not complete, '
+        #                      'please check if one of the image folder is not exist')
+        # 如果训练测试列表不存在，创建
         if not self._is_training_sample_index_file_complete():
             self._generate_training_example_index_file()
 
@@ -80,13 +80,13 @@ class LaneNetDataProducer(object):
             _example_gt_path_info = []
             _example_gt_binary_path_info = []
             _example_gt_instance_path_info = []
-
+            root_dir = os.path.dirname(os.path.abspath(_index_file_path))
             with open(_index_file_path, 'r') as _file:
                 for _line in _file:
                     _example_info = _line.rstrip('\r').rstrip('\n').split(' ')
-                    _example_gt_path_info.append(_example_info[0])
-                    _example_gt_binary_path_info.append(_example_info[1])
-                    _example_gt_instance_path_info.append(_example_info[2])
+                    _example_gt_path_info.append(os.path.join(root_dir, _example_info[0]))
+                    _example_gt_binary_path_info.append(os.path.join(root_dir, _example_info[1]))
+                    _example_gt_instance_path_info.append(os.path.join(root_dir, _example_info[2]))
 
             ret = {
                 'gt_path_info': _example_gt_path_info,
@@ -185,7 +185,10 @@ class LaneNetDataProducer(object):
         # generate test example tfrecords
         log.info('Start generating testing example tfrecords')
 
+
         # collecting test images paths info
+        if not ops.exists(self._test_example_index_file_path):
+            return
         test_image_paths_info = _read_training_example_index_file(self._test_example_index_file_path)
         test_gt_images_paths = test_image_paths_info['gt_path_info']
         test_gt_binary_images_paths = test_image_paths_info['gt_binary_path_info']
@@ -227,9 +230,9 @@ class LaneNetDataProducer(object):
         :return:
         """
         return \
-            ops.exists(self._train_example_index_file_path) and \
-            ops.exists(self._test_example_index_file_path) and \
-            ops.exists(self._val_example_index_file_path)
+            ops.exists(self._train_example_index_file_path) \
+            and ops.exists(self._val_example_index_file_path)
+            # and ops.exists(self._test_example_index_file_path) and \
 
     def _generate_training_example_index_file(self):
         """
