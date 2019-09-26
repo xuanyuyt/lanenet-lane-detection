@@ -12,7 +12,7 @@ import argparse
 import os.path as ops
 import time
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "7"
 import sys
 sys.path.append('./')
 
@@ -37,8 +37,13 @@ def init_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--image_path', type=str, default='./data/tusimple_test_image/0.jpg',
                         help='The image path or the src image save dir')
-    parser.add_argument('--weights_path', type=str, default='./model/tusimple_lanenet_vgg/tusimple_lanenet_vgg.ckpt',
+    parser.add_argument('--weights_path', type=str,
+                        default='./model/mobileNet_lanenet/culane_lanenet_mobilenet_v2.ckpt',
                         help='The model weights path')
+    # './model/tusimple_lanenet_vgg/tusimple_lanenet_vgg.ckpt'
+    # './model/mobileNet_lanenet/culane_lanenet_mobilenet_v2_changename.ckpt'
+    parser.add_argument('--net_flag', type=str, default='mobilenet_v2', # vgg mobilenet_v2
+                        help='Backbone Network Tag')
 
     return parser.parse_args()
 
@@ -72,11 +77,12 @@ def minmax_scale(input_arr):
     return output_arr
 
 
-def test_lanenet(image_path, weights_path):
+def test_lanenet(image_path, weights_path, net_flag):
     """
 
     :param image_path:
     :param weights_path:
+    :param net_flag
     :return:
     """
     assert ops.exists(image_path), '{:s} not exist'.format(image_path)
@@ -86,7 +92,10 @@ def test_lanenet(image_path, weights_path):
     image = cv2.imread(image_path, cv2.IMREAD_COLOR)
     image_vis = image
     image = cv2.resize(image, (512, 256), interpolation=cv2.INTER_LINEAR) # W521 x H256
-    image = image / 127.5 - 1.0 # 归一化到 -1,1
+    if net_flag == 'vgg':
+        image = image / 127.5 - 1.0 # 归一化到 -1,1
+    elif net_flag == 'mobilenet_v2':
+        image = image - [103.939, 116.779, 123.68]
     log.info('Image load complete, cost time: {:.5f}s'.format(time.time() - t_start))
 
     input_tensor = tf.placeholder(dtype=tf.float32, shape=[1, 256, 512, 3], name='input_tensor')
@@ -99,11 +108,12 @@ def test_lanenet(image_path, weights_path):
     saver = tf.train.Saver()
 
     # Set sess configuration
+    # ============================== config GPU
     sess_config = tf.ConfigProto()
     sess_config.gpu_options.per_process_gpu_memory_fraction = CFG.TEST.GPU_MEMORY_FRACTION
     sess_config.gpu_options.allow_growth = CFG.TRAIN.TF_ALLOW_GROWTH
     sess_config.gpu_options.allocator_type = 'BFC' # TensorFlow内存管理bfc算法
-
+    # ==============================
     sess = tf.Session(config=sess_config)
 
     with sess.as_default():
@@ -156,4 +166,4 @@ if __name__ == '__main__':
     # init args
     args = init_args()
 
-    test_lanenet(args.image_path, args.weights_path)
+    test_lanenet(args.image_path, args.weights_path, args.net_flag)

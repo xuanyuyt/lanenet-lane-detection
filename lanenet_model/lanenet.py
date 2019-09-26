@@ -29,6 +29,10 @@ class LaneNet(cnn_basenet.CNNBaseModel):
         super(LaneNet, self).__init__()
         self._net_flag = net_flag
         self._reuse = reuse
+        if net_flag == 'mobilenet_v2':
+            self._need_layer_norm = False
+        else:
+            self._need_layer_norm = True
 
         self._frontend = lanenet_front_end.LaneNetFrondEnd(
             phase=phase, net_flag=net_flag
@@ -52,14 +56,15 @@ class LaneNet(cnn_basenet.CNNBaseModel):
                 reuse=self._reuse
             )
 
-            # second apply backend process
+            # # second apply backend process
             binary_seg_prediction, instance_seg_prediction = self._backend.inference(
                 binary_seg_logits=extract_feats_result['binary_segment_logits']['data'],
                 instance_seg_logits=extract_feats_result['instance_segment_logits']['data'],
                 name='{:s}_backend'.format(self._net_flag),
-                reuse=self._reuse
+                reuse=self._reuse,
+                need_layer_norm = self._need_layer_norm
             )
-
+            # pix_embedding_conv
             if not self._reuse:
                 self._reuse = True
 
@@ -89,7 +94,8 @@ class LaneNet(cnn_basenet.CNNBaseModel):
                 instance_seg_logits=extract_feats_result['instance_segment_logits']['data'],
                 instance_label=instance_label,
                 name='{:s}_backend'.format(self._net_flag),
-                reuse=self._reuse
+                reuse=self._reuse,
+                need_layer_norm=self._need_layer_norm
             )
 
             if not self._reuse:

@@ -39,13 +39,15 @@ def init_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-d', '--dataset_dir', type=str,default='../../TuSimple/',
-                        help='Lanenet Dataset dir')
+                        help='Lanenet Dataset dir') # 'D:/Other_DataSets/TuSimple/'
     parser.add_argument('-w', '--weights_path', type=str,
-                        default='./model/tusimple_lanenet_vgg/tusimple_lanenet_vgg.ckpt',
+                        default='./model/tusimple_lanenet_vgg/tusimple_lanenet_vgg_changename.ckpt',
+                        # default='./model/mobileNet_lanenet/culane_lanenet_mobilenet_v2_changename.ckpt',
                         help='Path to pre-trained weights to continue training')
+
     parser.add_argument('-m', '--multi_gpus', type=bool, default=True,
                         help='Use multi gpus to train')
-    parser.add_argument('--net_flag', type=str, default='vgg',
+    parser.add_argument('--net_flag', type=str, default='vgg', # mobilenet_v2 vgg
                         help='The net flag which determins the net\'s architecture')
     parser.add_argument('--scratch', type=bool, default=False,
                         help='Is training from scratch ?')
@@ -400,7 +402,13 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', scratch=False)
     train_start_time = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))
     model_name = 'tusimple_lanenet_{:s}_{:s}.ckpt'.format(net_flag, str(train_start_time))
     model_save_path = ops.join(model_save_dir, model_name)
-    saver = tf.train.Saver()
+
+    # 删除 Momentum 的参数
+    # variables = tf.contrib.framework.get_variables_to_restore()
+    # variables_to_resotre = [v for v in variables if 'Momentum' not in v.name.split('/')[-1]]
+    # for v in variables_to_resotre:
+    #     print(v.name)
+    saver = tf.train.Saver(variables_to_resotre)
 
     # Set tf summary save path
     tboard_save_path = 'tboard/tusimple_lanenet_{:s}'.format(net_flag)
@@ -435,11 +443,11 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', scratch=False)
         # ============================== load pretrain model
         if weights_path is None:
             log.info('Training from scratch')
-            init = tf.global_variables_initializer()
-            sess.run(init)
+            sess.run(tf.global_variables_initializer())
         elif scratch and net_flag == 'vgg' and weights_path is None:
             load_pretrained_weights(tf.trainable_variables(), './data/vgg16.npy', sess)
         else:
+            sess.run(tf.global_variables_initializer())
             log.info('Restore model from last model checkpoint {:s}'.format(weights_path))
             saver.restore(sess=sess, save_path=weights_path)
         # ==============================
@@ -777,4 +785,5 @@ if __name__ == '__main__':
 VGG:MEAN Val: total_loss= 2.950904 binary_seg_loss= 0.252387 instance_seg_loss= 0.774763 
               l2_reg_loss=1.923754 accuracy= 0.949175 fp= 0.855856 fn= 0.050825 
               mean_cost_time= 31198.629075s 
+mobileV2 
 """

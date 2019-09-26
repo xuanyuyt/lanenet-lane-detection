@@ -11,6 +11,7 @@ The base convolution neural networks mainly implement some useful cnn functions
 import tensorflow as tf
 import numpy as np
 
+weight_decay=1e-4
 
 class CNNBaseModel(object):
     """
@@ -67,7 +68,7 @@ class CNNBaseModel(object):
             if b_init is None:
                 b_init = tf.constant_initializer()
 
-            w = tf.get_variable('W', filter_shape, initializer=w_init)
+            w = tf.get_variable('w', filter_shape, initializer=w_init)
             b = None
 
             if use_bias:
@@ -487,3 +488,29 @@ class CNNBaseModel(object):
         """
         with tf.variable_scope(name):
             return tf.nn.relu(inputdata) - alpha * tf.nn.relu(-inputdata)
+
+    @staticmethod
+    def dwise_conv(input, k_h=3, k_w=3, channel_multiplier=1, strides=[1, 1, 1, 1],
+                   padding='SAME', stddev=0.02, name='dwise_conv', bias=False):
+        with tf.variable_scope(name):
+            in_channel = input.get_shape().as_list()[-1]
+            w = tf.get_variable('w', [k_h, k_w, in_channel, channel_multiplier],
+                                regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
+                                initializer=tf.truncated_normal_initializer(stddev=stddev))
+            conv = tf.nn.depthwise_conv2d(input, w, strides, padding, rate=None, name=None, data_format=None)
+            if bias:
+                biases = tf.get_variable('bias', [in_channel * channel_multiplier],
+                                         initializer=tf.constant_initializer(0.0))
+                conv = tf.nn.bias_add(conv, biases)
+
+            return conv
+
+    @staticmethod
+    def relu6(inputdata, name=None):
+        """
+
+        :param name:
+        :param inputdata:
+        :return:
+        """
+        return tf.nn.relu6(features=inputdata, name=name)

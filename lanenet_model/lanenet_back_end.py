@@ -63,7 +63,7 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
 
     def compute_loss(self, binary_seg_logits, binary_label,
                      instance_seg_logits, instance_label,
-                     name, reuse):
+                     name, reuse, need_layer_norm = True):
         """
         compute lanenet loss
         :param binary_seg_logits: 256x512x2
@@ -108,9 +108,10 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
 
             # calculate class weighted instance seg loss
             with tf.variable_scope(name_or_scope='instance_seg'):
-
-                pix_bn = self.layerbn(
-                    inputdata=instance_seg_logits, is_training=self._is_training, name='pix_bn')
+                if need_layer_norm:
+                    instance_seg_logits = self.layerbn(
+                        inputdata=instance_seg_logits, is_training=self._is_training, name='pix_bn')
+                pix_bn = instance_seg_logits
                 pix_relu = self.relu(inputdata=pix_bn, name='pix_relu')
                 pix_embedding = self.conv2d(
                     inputdata=pix_relu,
@@ -147,7 +148,7 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
 
         return ret
 
-    def inference(self, binary_seg_logits, instance_seg_logits, name, reuse):
+    def inference(self, binary_seg_logits, instance_seg_logits, name, reuse, need_layer_norm):
         """
 
         :param binary_seg_logits:
@@ -163,9 +164,10 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                 binary_seg_prediction = tf.argmax(binary_seg_score, axis=-1)
 
             with tf.variable_scope(name_or_scope='instance_seg'):
-
-                pix_bn = self.layerbn(
-                    inputdata=instance_seg_logits, is_training=self._is_training, name='pix_bn')
+                if need_layer_norm:
+                    instance_seg_logits = self.layerbn(
+                        inputdata=instance_seg_logits, is_training=self._is_training, name='pix_bn')
+                pix_bn = instance_seg_logits
                 pix_relu = self.relu(inputdata=pix_bn, name='pix_relu')
                 instance_seg_prediction = self.conv2d(
                     inputdata=pix_relu,
