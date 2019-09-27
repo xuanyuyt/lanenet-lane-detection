@@ -187,9 +187,10 @@ def normalize(gt_image, gt_binary_image, gt_instance_image):
         log.error(gt_instance_image.get_shape())
         raise ValueError('Input must be of size [height, width, C>0]')
 
-    gt_image = tf.subtract(tf.divide(gt_image, tf.constant(127.5, dtype=tf.float32)),
-                           tf.constant(1.0, dtype=tf.float32))
-    # gt_image = tf.subtract(gt_image, tf.constant([103.939, 116.779, 123.68], dtype=tf.float32))
+    # 数据预处理 (image - mean) / mean
+    # gt_image = tf.subtract(tf.divide(gt_image, tf.constant(127.5, dtype=tf.float32)),
+    #                        tf.constant(1.0, dtype=tf.float32))
+    gt_image = tf.subtract(gt_image, tf.constant([103.939, 116.779, 123.68], dtype=tf.float32))
 
     return gt_image, gt_binary_image, gt_instance_image
 

@@ -21,7 +21,7 @@ import tensorflow as tf
 import sys
 sys.path.append('./')
 import os
-GPU_IDS = '7'
+GPU_IDS = '6'
 os.environ["CUDA_VISIBLE_DEVICES"] = GPU_IDS
 from config import global_config
 from data_provider import lanenet_data_feed_pipline
@@ -41,13 +41,13 @@ def init_args():
     parser.add_argument('-d', '--dataset_dir', type=str,default='../../TuSimple/',
                         help='Lanenet Dataset dir') # 'D:/Other_DataSets/TuSimple/'
     parser.add_argument('-w', '--weights_path', type=str,
-                        default='./model/tusimple_lanenet_vgg/tusimple_lanenet_vgg_changename.ckpt',
-                        # default='./model/mobileNet_lanenet/culane_lanenet_mobilenet_v2_changename.ckpt',
+                        # default='./model/tusimple_lanenet_vgg/tusimple_lanenet_vgg_changename.ckpt',
+                        default='./model/tusimple_lanenet_mobilenet_v2/culane_lanenet_mobilenet_v2.ckpt',
                         help='Path to pre-trained weights to continue training')
 
     parser.add_argument('-m', '--multi_gpus', type=bool, default=True,
                         help='Use multi gpus to train')
-    parser.add_argument('--net_flag', type=str, default='vgg', # mobilenet_v2 vgg
+    parser.add_argument('--net_flag', type=str, default='mobilenet_v2', # mobilenet_v2 vgg
                         help='The net flag which determins the net\'s architecture')
     parser.add_argument('--scratch', type=bool, default=False,
                         help='Is training from scratch ?')
@@ -266,6 +266,28 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', scratch=False)
     # ---------------------------------------------------------------- #
 
     # ================================================================ #
+    #                          Define Optimizer                        #
+    # ================================================================ #
+    # set optimizer
+    global_step = tf.Variable(0, trainable=False)
+    learning_rate = tf.train.polynomial_decay(
+        learning_rate=CFG.TRAIN.LEARNING_RATE,
+        global_step=global_step,
+        decay_steps=CFG.TRAIN.STEPS,
+        power=0.9
+    )
+    learning_rate_scalar = tf.summary.scalar(name='learning_rate', tensor=learning_rate)
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    with tf.control_dependencies(update_ops):
+        optimizer = tf.train.MomentumOptimizer(
+            learning_rate=learning_rate, momentum=CFG.TRAIN.MOMENTUM).minimize(
+            loss=train_total_loss,
+            var_list=tf.trainable_variables(),
+            global_step=global_step
+        )
+    # ---------------------------------------------------------------- #
+
+    # ================================================================ #
     #                           Train Summary                          #
     # ================================================================ #
     train_cost_scalar = tf.summary.scalar(
@@ -295,7 +317,8 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', scratch=False)
     train_merge_summary_op = tf.summary.merge(
         [train_accuracy_scalar, train_cost_scalar, train_binary_seg_loss_scalar,
          train_instance_seg_loss_scalar, train_fn_scalar, train_fp_scalar,
-         train_binary_seg_ret_img, train_embedding_feats_ret_img]
+         train_binary_seg_ret_img, train_embedding_feats_ret_img,
+         learning_rate_scalar]
     )
     # ---------------------------------------------------------------- #
 
@@ -372,28 +395,6 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', scratch=False)
     # ---------------------------------------------------------------- #
 
     # ================================================================ #
-    #                          Define Optimizer                        #
-    # ================================================================ #
-    # set optimizer
-    global_step = tf.Variable(0, trainable=False)
-    learning_rate = tf.train.polynomial_decay(
-        learning_rate=CFG.TRAIN.LEARNING_RATE,
-        global_step=global_step,
-        decay_steps=CFG.TRAIN.STEPS,
-        power=0.9
-    )
-
-    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-    with tf.control_dependencies(update_ops):
-        optimizer = tf.train.MomentumOptimizer(
-            learning_rate=learning_rate, momentum=CFG.TRAIN.MOMENTUM).minimize(
-            loss=train_total_loss,
-            var_list=tf.trainable_variables(),
-            global_step=global_step
-        )
-    # ---------------------------------------------------------------- #
-
-    # ================================================================ #
     #                      Config Saver & Session                      #
     # ================================================================ #
     # Set tf model save path
@@ -404,8 +405,8 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', scratch=False)
     model_save_path = ops.join(model_save_dir, model_name)
 
     # 删除 Momentum 的参数
-    # variables = tf.contrib.framework.get_variables_to_restore()
-    # variables_to_resotre = [v for v in variables if 'Momentum' not in v.name.split('/')[-1]]
+    variables = tf.contrib.framework.get_variables_to_restore()
+    variables_to_resotre = [v for v in variables if 'Momentum' not in v.name.split('/')[-1]]
     # for v in variables_to_resotre:
     #     print(v.name)
     saver = tf.train.Saver(variables_to_resotre)
@@ -447,7 +448,7 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', scratch=False)
         elif scratch and net_flag == 'vgg' and weights_path is None:
             load_pretrained_weights(tf.trainable_variables(), './data/vgg16.npy', sess)
         else:
-            sess.run(tf.global_variables_initializer())
+            sess.run(tf.global_variables_initializer()) # 不同的优化算法需要。。。
             log.info('Restore model from last model checkpoint {:s}'.format(weights_path))
             saver.restore(sess=sess, save_path=weights_path)
         # ==============================

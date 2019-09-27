@@ -18,13 +18,13 @@ cfg = __C
 # Train options
 __C.TRAIN = edict()
 __C.TRAIN.TRAIN_SIZE = 2439
-__C.TRAIN.VAL_SIZE = 2783
+__C.TRAIN.VAL_SIZE = 2782
 # Set the shadownet training steps
 __C.TRAIN.STEPS = 80010
 # Set the display step
 __C.TRAIN.DISPLAY_STEP = 100
 # Set the test display step during training process
-__C.TRAIN.VAL_DISPLAY_STEP = 1
+__C.TRAIN.VAL_DISPLAY_STEP = 100
 # Set the momentum parameter of the optimizer
 __C.TRAIN.MOMENTUM = 0.9
 # Set the initial learning rate
@@ -44,7 +44,7 @@ __C.TRAIN.IMG_HEIGHT = 256
 # Set the image width
 __C.TRAIN.IMG_WIDTH = 512
 # Set the embedding features dims
-__C.TRAIN.EMBEDDING_FEATS_DIMS = 4
+__C.TRAIN.EMBEDDING_FEATS_DIMS = 3
 # Set the random crop pad size
 __C.TRAIN.CROP_PAD_SIZE = 32
 # Set cpu multi process thread nums
