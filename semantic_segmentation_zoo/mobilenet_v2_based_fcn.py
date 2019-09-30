@@ -174,9 +174,10 @@ class MOBILEV2FCN(cnn_basenet.CNNBaseModel):
             # encode stage 2
             res2_1 = self._res_block(conv_1_1, 1, 16, 1, self._is_training, name='res2_1')
             res3_1 = self._res_block(res2_1, exp, 24, 2, self._is_training, name='res3_1')  # size/4
+            res3_2 = self._res_block(res3_1, exp, 24, 1, self._is_training, name='res3_2')
 
             # encode stage 3
-            res4_1 = self._res_block(res3_1, exp, 32, 2, self._is_training, name='res4_1')  # size/8
+            res4_1 = self._res_block(res3_2, exp, 32, 2, self._is_training, name='res4_1')  # size/8
             res4_2 = self._res_block(res4_1, exp, 32, 1, self._is_training, name='res4_2')
             res4_3 = self._res_block(res4_2, exp, 32, 1, self._is_training, name='res4_3')
 

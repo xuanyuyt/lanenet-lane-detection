@@ -1,6 +1,6 @@
 import tensorflow as tf
-# org_weights_path="./model/mobileNet_lanenet/culane_lanenet_mobilenet_v2.ckpt"
-org_weights_path="./model/tusimple_lanenet_vgg/tusimple_lanenet_vgg_changename.ckpt"
+org_weights_path="./model/tusimple_lanenet_mobilenet_v2/tusimple_lanenet_mobilenet_v2_2019-09-30-15-13-19.ckpt-200002"
+# org_weights_path="./model/tusimple_lanenet_vgg/tusimple_lanenet_vgg_changename.ckpt"
 org_weights_mess = []
 load = tf.train.import_meta_graph(org_weights_path + '.meta')
 with tf.Session() as sess:

@@ -21,7 +21,7 @@ import tensorflow as tf
 import sys
 sys.path.append('./')
 import os
-GPU_IDS = '6'
+GPU_IDS = '7'
 os.environ["CUDA_VISIBLE_DEVICES"] = GPU_IDS
 from config import global_config
 from data_provider import lanenet_data_feed_pipline
@@ -270,14 +270,16 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', scratch=False)
     # ================================================================ #
     # set optimizer
     global_step = tf.Variable(0, trainable=False)
-    learning_rate = tf.train.polynomial_decay(
-        learning_rate=CFG.TRAIN.LEARNING_RATE,
-        global_step=global_step,
-        decay_steps=CFG.TRAIN.STEPS,
-        power=0.9
+    learning_rate = tf.train.polynomial_decay( # 多项式衰减
+        learning_rate=CFG.TRAIN.LEARNING_RATE, # 初始学习率
+        global_step=global_step, # 当前迭代次数
+        decay_steps=CFG.TRAIN.STEPS/4, # 在迭代到该次数实际，学习率衰减为 learning_rate * dacay_rate
+        end_learning_rate = CFG.TRAIN.LEARNING_RATE/10, # 最小的学习率
+        power=0.9,
+        cycle=True
     )
     learning_rate_scalar = tf.summary.scalar(name='learning_rate', tensor=learning_rate)
-    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS) # ?
     with tf.control_dependencies(update_ops):
         optimizer = tf.train.MomentumOptimizer(
             learning_rate=learning_rate, momentum=CFG.TRAIN.MOMENTUM).minimize(
@@ -405,8 +407,13 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', scratch=False)
     model_save_path = ops.join(model_save_dir, model_name)
 
     # 删除 Momentum 的参数
+    """
+    tensorflow在save model的时候，如果选择了global_step选项，会把对应的学习率也保存下来，
+    然后restore的时候会把学习率也恢复，因此需要去掉
+    """
     variables = tf.contrib.framework.get_variables_to_restore()
     variables_to_resotre = [v for v in variables if 'Momentum' not in v.name.split('/')[-1]]
+    variables_to_resotre = [v for v in variables_to_resotre if 'Variable' not in v.name.split('/')[-1]]
     # for v in variables_to_resotre:
     #     print(v.name)
     saver = tf.train.Saver(variables_to_resotre)
@@ -450,7 +457,7 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', scratch=False)
         else:
             sess.run(tf.global_variables_initializer()) # 不同的优化算法需要。。。
             log.info('Restore model from last model checkpoint {:s}'.format(weights_path))
-            saver.restore(sess=sess, save_path=weights_path)
+            saver.restore(sess=sess, save_path=weights_path,)
         # ==============================
 
         train_cost_time_mean = [] # 统计一个 batch 训练耗时
@@ -492,7 +499,7 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', scratch=False)
                 train_cost_time_mean.clear()
             # 每隔 VAL_DISPLAY_STEP 次，保存模型,保存当前 batch 训练结果图片
             if step % CFG.TRAIN.VAL_DISPLAY_STEP == 0:
-                saver.save(sess=sess, save_path=model_save_path, global_step=global_step)
+                saver.save(sess=sess, save_path=model_save_path, global_step=global_step) # global_step 会保存学习率信息
                 # record_training_intermediate_result(
                 #     gt_images=train_gt_imgs, gt_binary_labels=train_binary_gt_labels,
                 #     gt_instance_labels=train_instance_gt_labels, binary_seg_images=train_binary_seg_imgs,
@@ -786,5 +793,6 @@ if __name__ == '__main__':
 VGG:MEAN Val: total_loss= 2.950904 binary_seg_loss= 0.252387 instance_seg_loss= 0.774763 
               l2_reg_loss=1.923754 accuracy= 0.949175 fp= 0.855856 fn= 0.050825 
               mean_cost_time= 31198.629075s 
-mobileV2 
+mobileV2（缺少res3_2) MEAN Val: total_loss= 9.678829 binary_seg_loss= 0.207078 instance_seg_loss= 0.873754 
+              accuracy= 0.900191 fp= 0.835228 fn= 0.099809 mean_cost_time= 17556.474357s 
 """
