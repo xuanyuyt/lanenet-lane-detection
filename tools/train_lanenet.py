@@ -42,7 +42,7 @@ def init_args():
                         help='Lanenet Dataset dir') # 'D:/Other_DataSets/TuSimple/'
     parser.add_argument('-w', '--weights_path', type=str,
                         # default='./model/tusimple_lanenet_vgg/tusimple_lanenet_vgg_changename.ckpt',
-                        default='./model/tusimple_lanenet_mobilenet_v2/culane_lanenet_mobilenet_v2.ckpt',
+                        default='./model/tusimple_lanenet_mobilenet_v2/tusimple_lanenet_mobilenet_v2_2019-10-04-17-52-49.ckpt-8201',
                         help='Path to pre-trained weights to continue training')
 
     parser.add_argument('-m', '--multi_gpus', type=bool, default=True,
@@ -270,13 +270,13 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', scratch=False)
     # ================================================================ #
     # set optimizer
     global_step = tf.Variable(0, trainable=False)
-    learning_rate = tf.train.polynomial_decay( # 多项式衰减
-        learning_rate=CFG.TRAIN.LEARNING_RATE, # 初始学习率
-        global_step=global_step, # 当前迭代次数
-        decay_steps=CFG.TRAIN.STEPS/4, # 在迭代到该次数实际，学习率衰减为 learning_rate * dacay_rate
-        end_learning_rate = CFG.TRAIN.LEARNING_RATE/10, # 最小的学习率
-        power=0.9,
-        cycle=True
+    learning_rate = tf.train.cosine_decay_restarts( # 余弦衰减
+        learning_rate=CFG.TRAIN.LEARNING_RATE,      # 初始学习率
+        global_step=global_step,                    # 当前迭代次数
+        first_decay_steps=CFG.TRAIN.STEPS/3,        # 首次衰减周期
+        t_mul=2.0,                                  # 随后每次衰减周期倍数
+        m_mul=1.0,                                  # 随后每次初始学习率倍数
+        alpha = 0.00005,                            # 最小的学习率
     )
     learning_rate_scalar = tf.summary.scalar(name='learning_rate', tensor=learning_rate)
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS) # ?
@@ -406,7 +406,8 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', scratch=False)
     model_name = 'tusimple_lanenet_{:s}_{:s}.ckpt'.format(net_flag, str(train_start_time))
     model_save_path = ops.join(model_save_dir, model_name)
 
-    # 删除 Momentum 的参数
+    # ==============================
+    # 删除 Momentum 的参数, 注意这里保存的 meta 文件也会删了
     """
     tensorflow在save model的时候，如果选择了global_step选项，会把对应的学习率也保存下来，
     然后restore的时候会把学习率也恢复，因此需要去掉
@@ -414,9 +415,8 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', scratch=False)
     variables = tf.contrib.framework.get_variables_to_restore()
     variables_to_resotre = [v for v in variables if 'Momentum' not in v.name.split('/')[-1]]
     variables_to_resotre = [v for v in variables_to_resotre if 'Variable' not in v.name.split('/')[-1]]
-    # for v in variables_to_resotre:
-    #     print(v.name)
-    saver = tf.train.Saver(variables_to_resotre)
+    saver = tf.train.Saver(variables_to_resotre, max_to_keep=20)
+    # ==============================
 
     # Set tf summary save path
     tboard_save_path = 'tboard/tusimple_lanenet_{:s}'.format(net_flag)
@@ -443,7 +443,7 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', scratch=False)
 
     log.info('Global configuration is as follows:')
     log.info(CFG)
-
+    max_acc = 0.91
     # ================================================================ #
     #                            Train & Val                           #
     # ================================================================ #
@@ -562,6 +562,14 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', scratch=False)
                 mean_val_accuracy_figure /= val_steps
                 mean_val_fp_figure /= val_steps
                 mean_val_fn_figure /= val_steps
+
+                # ==============================
+                if mean_val_accuracy_figure > max_acc:
+                    max_acc = mean_val_accuracy_figure
+                    print('max_acc change to {}'.format(max_acc))
+                    model_save_path_max = ops.join(model_save_dir, 'tusimple_lanenet_{}_{}.ckpt'.format(step,max_acc))
+                    saver.save(sess=sess, save_path=model_save_path_max, global_step=global_step)
+                # ==============================
 
                 log.info('MEAN Val: total_loss= {:6f} binary_seg_loss= {:6f} '
                          'instance_seg_loss= {:6f} accuracy= {:6f} fp= {:6f} fn= {:6f}'

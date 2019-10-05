@@ -165,16 +165,28 @@ class MOBILEV2FCN(cnn_basenet.CNNBaseModel):
             exp = 6
 
             # encode stage 1
-            conv_1_1 = self._mobilev2_conv_stage(
+            conv1_1 = self._mobilev2_conv_stage(
                 input_tensor=input_tensor, k_size=3,
                 out_dims=32, name='conv1_1',stride=2,
                 need_layer_norm=True
             )
+            # ====================== 32 x 128 x 256
+            self._net_intermediate_results['conv1_1'] = {
+                'data': conv1_1,
+                'shape': conv1_1.get_shape().as_list()
+            }
+            # ======================
 
             # encode stage 2
-            res2_1 = self._res_block(conv_1_1, 1, 16, 1, self._is_training, name='res2_1')
+            res2_1 = self._res_block(conv1_1, 1, 16, 1, self._is_training, name='res2_1')
             res3_1 = self._res_block(res2_1, exp, 24, 2, self._is_training, name='res3_1')  # size/4
             res3_2 = self._res_block(res3_1, exp, 24, 1, self._is_training, name='res3_2')
+            # ====================== 24 x 64 x128
+            self._net_intermediate_results['res3_2'] = {
+                'data': res3_2,
+                'shape': res3_2.get_shape().as_list()
+            }
+            # ======================
 
             # encode stage 3
             res4_1 = self._res_block(res3_2, exp, 32, 2, self._is_training, name='res4_1')  # size/8
@@ -220,7 +232,10 @@ class MOBILEV2FCN(cnn_basenet.CNNBaseModel):
         """
         decode_layer_list = ['res7_3',
                              'res6_3',
-                             'res5_4']
+                             'res5_4',
+                             'res3_2',
+                             'conv1_1',
+                             ]
 
         # decode part for binary segmentation
         with tf.variable_scope(name):
@@ -239,8 +254,8 @@ class MOBILEV2FCN(cnn_basenet.CNNBaseModel):
                 fused = tf.add(deconv, score, name='fuse_{:d}'.format(i + 1))
                 score = fused
             # 有点狠啊
-            deconv_final = self.deconv2d(inputdata=score, out_channel=64, kernel_size=16,
-                                         stride=8, use_bias=False, name='deconv_final')
+            deconv_final = self.deconv2d(inputdata=score, out_channel=64, kernel_size=4,
+                                         stride=2, use_bias=False, name='deconv_final') # stride=8
 
             score_final = self.conv2d(inputdata=deconv_final, out_channel=2,
                                       kernel_size=1, use_bias=False, name='score_final')

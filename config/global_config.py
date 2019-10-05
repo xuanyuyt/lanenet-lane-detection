@@ -20,7 +20,7 @@ __C.TRAIN = edict()
 __C.TRAIN.TRAIN_SIZE = 2439
 __C.TRAIN.VAL_SIZE = 2782
 # Set the shadownet training steps
-__C.TRAIN.STEPS = 80010
+__C.TRAIN.STEPS = 60000
 # Set the display step
 __C.TRAIN.DISPLAY_STEP = 100
 # Set the test display step during training process
