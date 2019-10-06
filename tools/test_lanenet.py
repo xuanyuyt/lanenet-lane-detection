@@ -40,7 +40,7 @@ def init_args():
     parser.add_argument('--image_path', type=str, default='./data/tusimple_test_image/0.jpg',
                         help='The image path or the src image save dir')
     parser.add_argument('--weights_path', type=str,
-                        default='./model/tusimple_lanenet_mobilenet_v2/tusimple_lanenet_mobilenet_v2_2019-09-30-15-34-28.ckpt-79601',
+                        default='./model/tusimple_lanenet_mobilenet_v2/tusimple_lanenet_3600_0.929177263960692.ckpt-3601',
                         # default='./model/tusimple_lanenet_vgg/tusimple_lanenet_vgg_changename.ckpt',
                         help='The model weights path')
     parser.add_argument('--net_flag', type=str, default='mobilenet_v2', # vgg mobilenet_v2

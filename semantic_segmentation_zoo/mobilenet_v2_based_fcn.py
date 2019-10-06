@@ -248,14 +248,18 @@ class MOBILEV2FCN(cnn_basenet.CNNBaseModel):
             for i in range(len(decode_layer_list)):
                 deconv = self.deconv2d(inputdata=score, out_channel=64, kernel_size=4,
                                        stride=2, use_bias=False, name='deconv_{:d}'.format(i + 1))
+                # deconv = self.upsample(inputdata=score, method='nearest_neighbor',
+                #                        name='upsample_{:d}'.format(i + 1))
                 input_tensor = self._net_intermediate_results[decode_layer_list[i]]['data']
                 score = self.conv2d(inputdata=input_tensor, out_channel=64,
                                     kernel_size=1, use_bias=False, name='score_{:d}'.format(i + 1))
                 fused = tf.add(deconv, score, name='fuse_{:d}'.format(i + 1))
                 score = fused
-            # 有点狠啊
+
             deconv_final = self.deconv2d(inputdata=score, out_channel=64, kernel_size=4,
                                          stride=2, use_bias=False, name='deconv_final') # stride=8
+            # deconv_final = self.upsample(inputdata=score, method='nearest_neighbor',
+            #                              name='upsample_{:d}'.format(i + 1))
 
             score_final = self.conv2d(inputdata=deconv_final, out_channel=2,
                                       kernel_size=1, use_bias=False, name='score_final')

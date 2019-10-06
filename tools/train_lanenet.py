@@ -42,7 +42,7 @@ def init_args():
                         help='Lanenet Dataset dir') # 'D:/Other_DataSets/TuSimple/'
     parser.add_argument('-w', '--weights_path', type=str,
                         # default='./model/tusimple_lanenet_vgg/tusimple_lanenet_vgg_changename.ckpt',
-                        default='./model/tusimple_lanenet_mobilenet_v2/tusimple_lanenet_mobilenet_v2_2019-10-04-17-52-49.ckpt-8201',
+                        default='./model/tusimple_lanenet_mobilenet_v2/tusimple_lanenet_3600_0.929177263960692.ckpt-3601',
                         help='Path to pre-trained weights to continue training')
 
     parser.add_argument('-m', '--multi_gpus', type=bool, default=True,
@@ -276,7 +276,7 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', scratch=False)
         first_decay_steps=CFG.TRAIN.STEPS/3,        # 首次衰减周期
         t_mul=2.0,                                  # 随后每次衰减周期倍数
         m_mul=1.0,                                  # 随后每次初始学习率倍数
-        alpha = 0.00005,                            # 最小的学习率
+        alpha = 0.1,                                # 最小的学习率=alpha*learning_rate
     )
     learning_rate_scalar = tf.summary.scalar(name='learning_rate', tensor=learning_rate)
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS) # ?
@@ -443,7 +443,7 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', scratch=False)
 
     log.info('Global configuration is as follows:')
     log.info(CFG)
-    max_acc = 0.91
+    max_acc = 0.9
     # ================================================================ #
     #                            Train & Val                           #
     # ================================================================ #
@@ -498,8 +498,8 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', scratch=False)
                                 np.mean(train_cost_time_mean)))
                 train_cost_time_mean.clear()
             # 每隔 VAL_DISPLAY_STEP 次，保存模型,保存当前 batch 训练结果图片
-            if step % CFG.TRAIN.VAL_DISPLAY_STEP == 0:
-                saver.save(sess=sess, save_path=model_save_path, global_step=global_step) # global_step 会保存学习率信息
+            # if step % CFG.TRAIN.VAL_DISPLAY_STEP == 0:
+            #     saver.save(sess=sess, save_path=model_save_path, global_step=global_step) # global_step 会保存学习率信息
                 # record_training_intermediate_result(
                 #     gt_images=train_gt_imgs, gt_binary_labels=train_binary_gt_labels,
                 #     gt_instance_labels=train_instance_gt_labels, binary_seg_images=train_binary_seg_imgs,

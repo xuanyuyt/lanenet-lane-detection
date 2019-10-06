@@ -39,7 +39,7 @@ def init_args():
                         # default='../../TuSimple/val.txt',
                         help='The image list path')
     parser.add_argument('--weights_path', type=str,
-                        default='./model/tusimple_lanenet_mobilenet_v2/culane_lanenet_mobilenet_v2.ckpt',
+                        default='./model/tusimple_lanenet_mobilenet_v2/tusimple_lanenet_3600_0.929177263960692.ckpt-3601',
                         # default='./model/tusimple_lanenet_vgg/tusimple_lanenet_vgg_changename.ckpt',
                         help='The lanenet model weights path')
     parser.add_argument('--batch_size', type=int, help='The batch size of the test images', default=2)

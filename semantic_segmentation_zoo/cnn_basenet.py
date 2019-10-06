@@ -514,3 +514,12 @@ class CNNBaseModel(object):
         :return:
         """
         return tf.nn.relu6(features=inputdata, name=name)
+
+    @staticmethod
+    def upsample(inputdata, method, name):
+        if method == "nearest_neighbor":
+            with tf.variable_scope(name):
+                input_shape = tf.shape(inputdata)
+                output = tf.image.resize_nearest_neighbor(inputdata, (input_shape[1] * 2, input_shape[2] * 2))
+
+        return output
