@@ -42,14 +42,16 @@ def init_args():
                         help='Lanenet Dataset dir') # 'D:/Other_DataSets/TuSimple/'
     parser.add_argument('-w', '--weights_path', type=str,
                         # default='./model/tusimple_lanenet_vgg/tusimple_lanenet_vgg_changename.ckpt',
-                        default='./model/tusimple_lanenet_mobilenet_v2/tusimple_lanenet_3600_0.929177263960692.ckpt-3601',
+                        default='./model/tusimple_lanenet_mobilenet_v2_1005/tusimple_lanenet_3600_0.929177263960692.ckpt-3601',
                         help='Path to pre-trained weights to continue training')
 
     parser.add_argument('-m', '--multi_gpus', type=bool, default=True,
                         help='Use multi gpus to train')
     parser.add_argument('--net_flag', type=str, default='mobilenet_v2', # mobilenet_v2 vgg
                         help='The net flag which determins the net\'s architecture')
-    parser.add_argument('--scratch', type=bool, default=False,
+    parser.add_argument('--version_flag', type=str, default='1011',
+                        help='The net flag which determins the net\'s architecture')
+    parser.add_argument('--scratch', type=bool, default=True,
                         help='Is training from scratch ?')
 
     return parser.parse_args()
@@ -204,7 +206,7 @@ def compute_net_gradients(gt_images, gt_binary_labels, gt_instance_labels,
     return total_loss, grads
 
 
-def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', scratch=False):
+def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', version_flag='', scratch=False):
     """
 
     :param dataset_dir:
@@ -270,16 +272,24 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', scratch=False)
     # ================================================================ #
     # set optimizer
     global_step = tf.Variable(0, trainable=False)
-    learning_rate = tf.train.cosine_decay_restarts( # 余弦衰减
-        learning_rate=CFG.TRAIN.LEARNING_RATE,      # 初始学习率
-        global_step=global_step,                    # 当前迭代次数
-        first_decay_steps=CFG.TRAIN.STEPS/3,        # 首次衰减周期
-        t_mul=2.0,                                  # 随后每次衰减周期倍数
-        m_mul=1.0,                                  # 随后每次初始学习率倍数
-        alpha = 0.1,                                # 最小的学习率=alpha*learning_rate
+    # learning_rate = tf.train.cosine_decay_restarts( # 余弦衰减
+    #     learning_rate=CFG.TRAIN.LEARNING_RATE,      # 初始学习率
+    #     global_step=global_step,                    # 当前迭代次数
+    #     first_decay_steps=CFG.TRAIN.STEPS/3,        # 首次衰减周期
+    #     t_mul=2.0,                                  # 随后每次衰减周期倍数
+    #     m_mul=1.0,                                  # 随后每次初始学习率倍数
+    #     alpha = 0.1,                                # 最小的学习率=alpha*learning_rate
+    # )
+    learning_rate = tf.train.polynomial_decay(  # 多项式衰减
+        learning_rate=CFG.TRAIN.LEARNING_RATE,  # 初始学习率
+        global_step=global_step,  # 当前迭代次数
+        decay_steps=CFG.TRAIN.STEPS / 4,  # 在迭代到该次数实际，学习率衰减为 learning_rate * dacay_rate
+        end_learning_rate=CFG.TRAIN.LEARNING_RATE / 10,  # 最小的学习率
+        power=0.9,
+        cycle=True
     )
     learning_rate_scalar = tf.summary.scalar(name='learning_rate', tensor=learning_rate)
-    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS) # ?
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS) # for batch normalization
     with tf.control_dependencies(update_ops):
         optimizer = tf.train.MomentumOptimizer(
             learning_rate=learning_rate, momentum=CFG.TRAIN.MOMENTUM).minimize(
@@ -400,26 +410,30 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', scratch=False)
     #                      Config Saver & Session                      #
     # ================================================================ #
     # Set tf model save path
-    model_save_dir = 'model/tusimple_lanenet_{:s}'.format(net_flag)
+    model_save_dir = 'model/tusimple_lanenet_{:s}_{:s}'.format(net_flag, version_flag)
     os.makedirs(model_save_dir, exist_ok=True)
     train_start_time = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))
     model_name = 'tusimple_lanenet_{:s}_{:s}.ckpt'.format(net_flag, str(train_start_time))
     model_save_path = ops.join(model_save_dir, model_name)
 
     # ==============================
-    # 删除 Momentum 的参数, 注意这里保存的 meta 文件也会删了
-    """
-    tensorflow在save model的时候，如果选择了global_step选项，会把对应的学习率也保存下来，
-    然后restore的时候会把学习率也恢复，因此需要去掉
-    """
-    variables = tf.contrib.framework.get_variables_to_restore()
-    variables_to_resotre = [v for v in variables if 'Momentum' not in v.name.split('/')[-1]]
-    variables_to_resotre = [v for v in variables_to_resotre if 'Variable' not in v.name.split('/')[-1]]
-    saver = tf.train.Saver(variables_to_resotre, max_to_keep=20)
+    if scratch:
+        """
+        删除 Momentum 的参数, 注意这里保存的 meta 文件也会删了
+        tensorflow 在 save model 的时候，如果选择了 global_step 选项，会 global_step 值也保存下来，
+        然后 restore 的时候也就会接着这个 global_step 继续训练下去，因此需要去掉
+        """
+        variables = tf.trainable_variables()
+        variables_to_resotre = [v for v in variables if 'Momentum' not in v.name.split('/')[-1]]
+        variables_to_resotre = [v for v in variables_to_resotre if 'Variable' not in v.name.split('/')[-1]] # remove global step
+        restore_saver = tf.train.Saver(variables_to_resotre)
+    else:
+        restore_saver = tf.train.Saver()
+    saver = tf.train.Saver(max_to_keep=10)
     # ==============================
 
     # Set tf summary save path
-    tboard_save_path = 'tboard/tusimple_lanenet_{:s}'.format(net_flag)
+    tboard_save_path = 'tboard/tusimple_lanenet_{:s}_{:s}'.format(net_flag, version_flag)
     os.makedirs(tboard_save_path, exist_ok=True)
 
     # Set sess configuration
@@ -443,7 +457,7 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', scratch=False)
 
     log.info('Global configuration is as follows:')
     log.info(CFG)
-    max_acc = 0.9
+    max_acc = 0.85
     # ================================================================ #
     #                            Train & Val                           #
     # ================================================================ #
@@ -452,12 +466,15 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', scratch=False)
         if weights_path is None:
             log.info('Training from scratch')
             sess.run(tf.global_variables_initializer())
-        elif scratch and net_flag == 'vgg' and weights_path is None:
+        elif net_flag == 'vgg' and weights_path is None:
             load_pretrained_weights(tf.trainable_variables(), './data/vgg16.npy', sess)
-        else:
-            sess.run(tf.global_variables_initializer()) # 不同的优化算法需要。。。
+        elif scratch: # 从头开始训练，类似 Caffe 的 --weights
+            sess.run(tf.global_variables_initializer())
             log.info('Restore model from last model checkpoint {:s}'.format(weights_path))
-            saver.restore(sess=sess, save_path=weights_path,)
+            restore_saver.restore(sess=sess, save_path=weights_path,)
+        else: # 继续训练，类似 Caffe 的 --snapshot
+            log.info('Restore model from last model checkpoint {:s}'.format(weights_path))
+            restore_saver.restore(sess=sess, save_path=weights_path,)
         # ==============================
 
         train_cost_time_mean = [] # 统计一个 batch 训练耗时
@@ -497,14 +514,14 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', scratch=False)
                                 train_l2_loss, train_accuracy_figure, train_fp_figure, train_fn_figure, lr,
                                 np.mean(train_cost_time_mean)))
                 train_cost_time_mean.clear()
-            # 每隔 VAL_DISPLAY_STEP 次，保存模型,保存当前 batch 训练结果图片
+            # # 每隔 VAL_DISPLAY_STEP 次，保存模型,保存当前 batch 训练结果图片
             # if step % CFG.TRAIN.VAL_DISPLAY_STEP == 0:
-            #     saver.save(sess=sess, save_path=model_save_path, global_step=global_step) # global_step 会保存学习率信息
-                # record_training_intermediate_result(
-                #     gt_images=train_gt_imgs, gt_binary_labels=train_binary_gt_labels,
-                #     gt_instance_labels=train_instance_gt_labels, binary_seg_images=train_binary_seg_imgs,
-                #     pix_embeddings=train_embeddings
-                # )
+            #     saver.save(sess=sess, save_path=model_save_path, global_step=global_step) # global_step 会保存 global_step 信息
+            #     record_training_intermediate_result(
+            #         gt_images=train_gt_imgs, gt_binary_labels=train_binary_gt_labels,
+            #         gt_instance_labels=train_instance_gt_labels, binary_seg_images=train_binary_seg_imgs,
+            #         pix_embeddings=train_embeddings
+            #     )
             # ---------------------------------------------------------------- #
 
             # ================================================================ #
@@ -566,8 +583,8 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', scratch=False)
                 # ==============================
                 if mean_val_accuracy_figure > max_acc:
                     max_acc = mean_val_accuracy_figure
-                    print('max_acc change to {}'.format(max_acc))
-                    model_save_path_max = ops.join(model_save_dir, 'tusimple_lanenet_{}_{}.ckpt'.format(step,max_acc))
+                    log.info('MAX_ACC change to {}'.format(max_acc))
+                    model_save_path_max = ops.join(model_save_dir, 'tusimple_lanenet_{}.ckpt'.format(max_acc))
                     saver.save(sess=sess, save_path=model_save_path_max, global_step=global_step)
                 # ==============================
 
@@ -794,13 +811,21 @@ if __name__ == '__main__':
     print('GPU_IDS: ', GPU_IDS)
     # train lanenet
     if not args.multi_gpus:
-        train_lanenet(args.dataset_dir, args.weights_path, net_flag=args.net_flag, scratch=args.scratch)
+        train_lanenet(args.dataset_dir, args.weights_path, net_flag=args.net_flag, 
+                      version_flag=args.version_flag, scratch=args.scratch)
     else:
-        train_lanenet_multi_gpu(args.dataset_dir, args.weights_path, net_flag=args.net_flag, scratch=args.scratch)
+        train_lanenet_multi_gpu(args.dataset_dir, args.weights_path, net_flag=args.net_flag,
+                                version_flag=args.version_flag, scratch=args.scratch)
 """
 VGG:MEAN Val: total_loss= 2.950904 binary_seg_loss= 0.252387 instance_seg_loss= 0.774763 
               l2_reg_loss=1.923754 accuracy= 0.949175 fp= 0.855856 fn= 0.050825 
               mean_cost_time= 31198.629075s 
 mobileV2（缺少res3_2) MEAN Val: total_loss= 9.678829 binary_seg_loss= 0.207078 instance_seg_loss= 0.873754 
               accuracy= 0.900191 fp= 0.835228 fn= 0.099809 mean_cost_time= 17556.474357s 
+mobileV2 MEAN Val: total_loss= 8.534331 binary_seg_loss= 0.194427 instance_seg_loss= 0.735091 
+              accuracy= 0.920086 fp= 0.834390 fn= 0.079914 mean_cost_time= 16953.547680s  
+mobileV2 修改反卷积 MEAN Val: total_loss= 7.231174 binary_seg_loss= 0.226127 instance_seg_loss= 0.873370 
+              accuracy= 0.929177 fp= 0.863174 fn= 0.070823 mean_cost_time= 15651.155647s 
+mobileV2 上采样 MEAN Val: total_loss= 4.993308 binary_seg_loss= 0.257211 instance_seg_loss= 0.987948 
+              accuracy= 0.886431 fp= 0.880646 fn= 0.113569 mean_cost_time= 7826.575856s 
 """

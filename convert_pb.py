@@ -13,22 +13,20 @@
 
 
 import tensorflow as tf
-from mylanenet_merge_model_work import LaneNet
-import os
-import pdb
+from lanenet_model import lanenet
 
 
-pb_file = "D:\desktop\lane_work\lane_work\model\mobileNet_lanenet/culane_lanenet_mobilenet_v2_1005.pb"
+pb_file = "model/tusimple_lanenet_mobilenet_v2_1005/culane_lanenet_mobilenet_v2_1005.pb"
 #ckpt_file = cfg.YOLO.DEMO_WEIGHT
-ckpt_file = 'D:\desktop\lane_work\lane_work\model\mobileNet_lanenet/culane_lanenet_mobilenet_v2_1005.ckpt'
+ckpt_file = 'model/tusimple_lanenet_mobilenet_v2_1005/tusimple_lanenet_3600_0.929177263960692.ckpt-3601'
 # output_node_names = ["input/input_data", "pred_sbbox/concat_2", "pred_mbbox/concat_2", "pred_lbbox/concat_2"]
 #
 #output_node_names = ["input_tensor", "lanenet_loss/inference/decode/score_final/Conv2D", "lanenet_loss/pix_embedding_conv/Conv2D"]
-output_node_names = ["input_tensor", "lanenet_model/mobilenet_v2_frontend/decode/score_final/Conv2D","lanenet_model/mobilenet_v2_backend/instance_seg/pix_embedding_conv/Conv2D"]
+output_node_names = ["input_tensor", "lanenet_model/mobilenet_v2_backend/binary_seg/ArgMax","lanenet_model/mobilenet_v2_backend/instance_seg/pix_embedding_conv/Conv2D"]
 
 input_data = tf.placeholder(dtype=tf.float32, name='input_tensor', shape=[None,None,None,3])
 phase_tensor = tf.constant('false', tf.string)
-net = LaneNet(phase=phase_tensor, net_flag='mobilenet_v2')
+net = lanenet.LaneNet(phase=phase_tensor, net_flag='mobilenet_v2')
 model=net.inference(input_data,name='lanenet_model')
 #print(model.conv_sbbox, model.conv_mbbox, model.conv_lbbox)
 
