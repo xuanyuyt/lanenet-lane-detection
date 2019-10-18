@@ -16,7 +16,7 @@ import time
 import math
 import sys
 sys.path.append('./')
-os.environ["CUDA_VISIBLE_DEVICES"] = "7"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import tensorflow as tf
 import glog as log
 import numpy as np
@@ -35,11 +35,11 @@ def init_args():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('--image_list', type=str,
-                        default = 'H:/Other_DataSets/TuSimple/TuSimple/val.txt',
+                        default = 'H:/Other_DataSets/TuSimple/val.txt',
                         # default='../../TuSimple/val.txt',
                         help='The image list path')
     parser.add_argument('--weights_path', type=str,
-                        default='./model/tusimple_lanenet_mobilenet_v2/tusimple_lanenet_3600_0.929177263960692.ckpt-3601',
+                        default='./model/tusimple_lanenet_mobilenet_v2_1005/tusimple_lanenet_3600_0.929177263960692.ckpt-3601',
                         # default='./model/tusimple_lanenet_vgg/tusimple_lanenet_vgg_changename.ckpt',
                         help='The lanenet model weights path')
     parser.add_argument('--batch_size', type=int, help='The batch size of the test images', default=2)

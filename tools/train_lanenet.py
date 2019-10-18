@@ -21,7 +21,7 @@ import tensorflow as tf
 import sys
 sys.path.append('./')
 import os
-GPU_IDS = '7'
+GPU_IDS = '5'
 os.environ["CUDA_VISIBLE_DEVICES"] = GPU_IDS
 from config import global_config
 from data_provider import lanenet_data_feed_pipline
@@ -38,7 +38,7 @@ def init_args():
     """
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-d', '--dataset_dir', type=str,default='../../TuSimple/',
+    parser.add_argument('-d', '--dataset_dir', type=str,default='../..//TuSimple/',
                         help='Lanenet Dataset dir') # 'D:/Other_DataSets/TuSimple/'
     parser.add_argument('-w', '--weights_path', type=str,
                         # default='./model/tusimple_lanenet_vgg/tusimple_lanenet_vgg_changename.ckpt',
@@ -49,7 +49,7 @@ def init_args():
                         help='Use multi gpus to train')
     parser.add_argument('--net_flag', type=str, default='mobilenet_v2', # mobilenet_v2 vgg
                         help='The net flag which determins the net\'s architecture')
-    parser.add_argument('--version_flag', type=str, default='1011',
+    parser.add_argument('--version_flag', type=str, default='1018',
                         help='The net flag which determins the net\'s architecture')
     parser.add_argument('--scratch', type=bool, default=True,
                         help='Is training from scratch ?')
@@ -470,7 +470,7 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', version_flag='
             load_pretrained_weights(tf.trainable_variables(), './data/vgg16.npy', sess)
         elif scratch: # 从头开始训练，类似 Caffe 的 --weights
             sess.run(tf.global_variables_initializer())
-            log.info('Restore model from last model checkpoint {:s}'.format(weights_path))
+            log.info('Restore model from last model checkpoint {:s}, scratch'.format(weights_path))
             restore_saver.restore(sess=sess, save_path=weights_path,)
         else: # 继续训练，类似 Caffe 的 --snapshot
             log.info('Restore model from last model checkpoint {:s}'.format(weights_path))
@@ -811,7 +811,7 @@ if __name__ == '__main__':
     print('GPU_IDS: ', GPU_IDS)
     # train lanenet
     if not args.multi_gpus:
-        train_lanenet(args.dataset_dir, args.weights_path, net_flag=args.net_flag, 
+        train_lanenet(args.dataset_dir, args.weights_path, net_flag=args.net_flag,
                       version_flag=args.version_flag, scratch=args.scratch)
     else:
         train_lanenet_multi_gpu(args.dataset_dir, args.weights_path, net_flag=args.net_flag,

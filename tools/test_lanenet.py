@@ -94,11 +94,25 @@ def test_lanenet(image_path, weights_path, net_flag):
     t_start = time.time()
     image = cv2.imread(image_path, cv2.IMREAD_COLOR)
     image_vis = image
+    # ======================
     image = cv2.resize(image, (512, 256), interpolation=cv2.INTER_LINEAR) # W521 x H256
     if net_flag == 'vgg':
         image = image / 127.5 - 1.0 # 归一化到 -1,1
     elif net_flag == 'mobilenet_v2':
         image = image - [103.939, 116.779, 123.68]
+    # ======================
+    # ======================
+    # import struct
+    # image = np.full(shape=[256, 512, 3], fill_value=0.0, dtype=np.float32)
+    # f = open('1.bin', "rb")
+    # for c in range(image.shape[2]):
+    #     for h in range(image.shape[0]):
+    #         for w in range(image.shape[1]):
+    #             data = f.read(1)
+    #             data_temp = struct.unpack("b", data)[0]
+    #             image[h][w][c] = float(data_temp)
+    # f.close()
+    # ======================
     log.info('Image load complete, cost time: {:.5f}s'.format(time.time() - t_start))
 
     input_tensor = tf.placeholder(dtype=tf.float32, shape=[1, 256, 512, 3], name='input_tensor')
@@ -128,7 +142,7 @@ def test_lanenet(image_path, weights_path, net_flag):
             [binary_seg_ret, instance_seg_ret],
             feed_dict={input_tensor: [image]}
         )
-        # np.savez('seg_iamge',binary_seg_image=binary_seg_image,instance_seg_image =instance_seg_image)
+        # np.savez('CV22_seg_iamge',binary_seg_image=binary_seg_image,instance_seg_image =instance_seg_image)
         t_cost = time.time() - t_start
         log.info('Single imgae inference cost time: {:.5f}s'.format(t_cost))
 

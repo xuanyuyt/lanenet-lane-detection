@@ -23,7 +23,7 @@ def calculate_model_precision(input_tensor, label_tensor):
     final_output = tf.expand_dims(tf.argmax(logits, axis=-1), axis=-1)
 
     idx = tf.where(tf.equal(final_output, 1))
-    pix_cls_ret = tf.gather_nd(label_tensor, idx)
+    pix_cls_ret = tf.gather_nd(label_tensor, idx) # P1 \cap G1
     accuracy = tf.count_nonzero(pix_cls_ret)
     accuracy = tf.divide(
         accuracy,
@@ -43,7 +43,7 @@ def calculate_model_fp(input_tensor, label_tensor):
     final_output = tf.expand_dims(tf.argmax(logits, axis=-1), axis=-1)
 
     idx = tf.where(tf.equal(final_output, 1))
-    pix_cls_ret = tf.gather_nd(final_output, idx)
+    pix_cls_ret = tf.gather_nd(final_output, idx) # P_1
     false_pred = tf.cast(tf.shape(pix_cls_ret)[0], tf.int64) - tf.count_nonzero(
         tf.gather_nd(label_tensor, idx)
     )
@@ -62,8 +62,8 @@ def calculate_model_fn(input_tensor, label_tensor):
     final_output = tf.expand_dims(tf.argmax(logits, axis=-1), axis=-1)
 
     idx = tf.where(tf.equal(label_tensor, 1))
-    pix_cls_ret = tf.gather_nd(final_output, idx)
-    label_cls_ret = tf.gather_nd(label_tensor, tf.where(tf.equal(label_tensor, 1)))
+    pix_cls_ret = tf.gather_nd(final_output, idx) # P1 \cap G1
+    label_cls_ret = tf.gather_nd(label_tensor, tf.where(tf.equal(label_tensor, 1))) # G_1
     mis_pred = tf.cast(tf.shape(label_cls_ret)[0], tf.int64) - tf.count_nonzero(pix_cls_ret)
 
     return tf.divide(mis_pred, tf.cast(tf.shape(label_cls_ret)[0], tf.int64))
@@ -74,7 +74,7 @@ def get_image_summary(img):
     Make an image summary for 4d tensor image with index idx
     :param img:
     """
-
+    # 显示处理
     if len(img.get_shape().as_list()) == 3:
         img = tf.expand_dims(img, -1)
 

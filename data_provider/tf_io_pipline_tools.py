@@ -17,6 +17,7 @@ import numpy as np
 import tensorflow as tf
 
 from config import global_config
+import data_provider.autoaugment_utils_my as autoaugment
 
 CFG = global_config.cfg
 
@@ -140,6 +141,10 @@ def augment_for_train(gt_image, gt_binary_image, gt_instance_image):
     :param gt_instance_image:
     :return:
     """
+
+    gt_image, _ = autoaugment.distort_image_with_autoaugment(gt_image, tf.cast([0, 0, 0, 0], tf.float32),
+                                                             'test')
+
     # convert image from uint8 to float32
     gt_image = tf.cast(gt_image, tf.float32)
     gt_binary_image = tf.cast(gt_binary_image, tf.float32)

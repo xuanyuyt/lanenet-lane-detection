@@ -130,7 +130,7 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
             l2_reg_loss = tf.constant(0.0, tf.float32)
             for vv in tf.trainable_variables():
                 if 'bn' in vv.name or 'batchnorm' in vv.name or 'batch_norm' in vv.name \
-                        and 'alpha' in vv.name or 'gn' in vv.name:
+                        or 'batch_normalization' in vv.name or 'gn' in vv.name:
                     continue
                 else:
                     l2_reg_loss = tf.add(l2_reg_loss, tf.nn.l2_loss(vv))
