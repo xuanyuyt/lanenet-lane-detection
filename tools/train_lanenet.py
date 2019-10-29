@@ -38,13 +38,12 @@ def init_args():
     """
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-d', '--dataset_dir', type=str,default='../..//TuSimple/',
+    parser.add_argument('-d', '--dataset_dir', type=str,default='../../TuSimple/',
                         help='Lanenet Dataset dir') # 'D:/Other_DataSets/TuSimple/'
     parser.add_argument('-w', '--weights_path', type=str,
                         # default='./model/tusimple_lanenet_vgg/tusimple_lanenet_vgg_changename.ckpt',
                         default='./model/tusimple_lanenet_mobilenet_v2_1005/tusimple_lanenet_3600_0.929177263960692.ckpt-3601',
                         help='Path to pre-trained weights to continue training')
-
     parser.add_argument('-m', '--multi_gpus', type=bool, default=True,
                         help='Use multi gpus to train')
     parser.add_argument('--net_flag', type=str, default='mobilenet_v2', # mobilenet_v2 vgg
@@ -423,7 +422,7 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', version_flag='
         tensorflow 在 save model 的时候，如果选择了 global_step 选项，会 global_step 值也保存下来，
         然后 restore 的时候也就会接着这个 global_step 继续训练下去，因此需要去掉
         """
-        variables = tf.trainable_variables()
+        variables = tf.contrib.framework.get_variables_to_restore()
         variables_to_resotre = [v for v in variables if 'Momentum' not in v.name.split('/')[-1]]
         variables_to_resotre = [v for v in variables_to_resotre if 'Variable' not in v.name.split('/')[-1]] # remove global step
         restore_saver = tf.train.Saver(variables_to_resotre)
@@ -457,7 +456,8 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', version_flag='
 
     log.info('Global configuration is as follows:')
     log.info(CFG)
-    max_acc = 0.85
+    max_acc = 0.9
+    save_num = 0
     # ================================================================ #
     #                            Train & Val                           #
     # ================================================================ #
@@ -471,10 +471,16 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', version_flag='
         elif scratch: # 从头开始训练，类似 Caffe 的 --weights
             sess.run(tf.global_variables_initializer())
             log.info('Restore model from last model checkpoint {:s}, scratch'.format(weights_path))
-            restore_saver.restore(sess=sess, save_path=weights_path,)
+            try:
+                restore_saver.restore(sess=sess, save_path=weights_path)
+            except:
+                log.info('model maybe is not exist!')
         else: # 继续训练，类似 Caffe 的 --snapshot
             log.info('Restore model from last model checkpoint {:s}'.format(weights_path))
-            restore_saver.restore(sess=sess, save_path=weights_path,)
+            try:
+                restore_saver.restore(sess=sess, save_path=weights_path)
+            except:
+                log.info('model maybe is not exist!')
         # ==============================
 
         train_cost_time_mean = [] # 统计一个 batch 训练耗时
@@ -583,9 +589,13 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', version_flag='
                 # ==============================
                 if mean_val_accuracy_figure > max_acc:
                     max_acc = mean_val_accuracy_figure
-                    log.info('MAX_ACC change to {}'.format(max_acc))
-                    model_save_path_max = ops.join(model_save_dir, 'tusimple_lanenet_{}.ckpt'.format(max_acc))
+                    if save_num < 3: # 前三次不算
+                        max_acc = 0.9
+                    log.info('MAX_ACC change to {}'.format(mean_val_accuracy_figure))
+                    model_save_path_max = ops.join(model_save_dir,
+                                                   'tusimple_lanenet_{}.ckpt'.format(mean_val_accuracy_figure))
                     saver.save(sess=sess, save_path=model_save_path_max, global_step=global_step)
+                    save_num += 1
                 # ==============================
 
                 log.info('MEAN Val: total_loss= {:6f} binary_seg_loss= {:6f} '

@@ -15,6 +15,7 @@ import cv2
 import glog as log
 import numpy as np
 from sklearn.cluster import DBSCAN
+from sklearn.cluster import MeanShift
 from sklearn.preprocessing import StandardScaler
 
 from config import global_config
@@ -167,6 +168,7 @@ class _LaneNetCluster(object):
         db = DBSCAN(eps=CFG.POSTPROCESS.DBSCAN_EPS, min_samples=CFG.POSTPROCESS.DBSCAN_MIN_SAMPLES)
         try:
             features = StandardScaler().fit_transform(embedding_image_feats)
+            # features = embedding_image_feats
             db.fit(features)
         except Exception as err:
             log.error(err)
@@ -188,6 +190,45 @@ class _LaneNetCluster(object):
             'origin_features': features,
             'cluster_nums': num_clusters,
             'db_labels': db_labels,
+            'unique_labels': unique_labels,
+            'cluster_center': cluster_centers
+        }
+
+        return ret
+
+    @staticmethod
+    def _embedding_feats_meanshift_cluster(embedding_image_feats, bandwidth=1.5):
+        """
+
+        :param embedding_image_feats:
+        :param bandwidth:
+        :return:
+        """
+        ms = MeanShift(bandwidth, bin_seeding=True)
+        try:
+            # features = StandardScaler().fit_transform(embedding_image_feats)
+            features = embedding_image_feats
+            ms.fit(features)
+        except Exception as err:
+            log.error(err)
+            ret = {
+                'origin_features': None,
+                'cluster_nums': 0,
+                'db_labels': None,
+                'unique_labels': None,
+                'cluster_center': None
+            }
+            return ret
+        labels = ms.labels_
+        unique_labels = np.unique(labels)
+        cluster_centers = ms.cluster_centers_
+
+        num_clusters = cluster_centers.shape[0]
+
+        ret = {
+            'origin_features': features,
+            'cluster_nums': num_clusters,
+            'db_labels': labels,
             'unique_labels': unique_labels,
             'cluster_center': cluster_centers
         }
@@ -234,11 +275,32 @@ class _LaneNetCluster(object):
         dbscan_cluster_result = self._embedding_feats_dbscan_cluster(
             embedding_image_feats=get_lane_embedding_feats_result['lane_embedding_feats']
         )
-
-        mask = np.zeros(shape=[binary_seg_result.shape[0], binary_seg_result.shape[1], 3], dtype=np.uint8)
         db_labels = dbscan_cluster_result['db_labels']
         unique_labels = dbscan_cluster_result['unique_labels']
+        # ============================== meanshift
+        # meanshift cluster
+        # meanshift_cluster_result = self._embedding_feats_meanshift_cluster(
+        #     embedding_image_feats=get_lane_embedding_feats_result['lane_embedding_feats'],
+        #     bandwidth=1.0
+        # )
+        # db_labels = meanshift_cluster_result['db_labels']
+        # unique_labels = meanshift_cluster_result['unique_labels']
+        # ==============================
+
+        mask = np.zeros(shape=[binary_seg_result.shape[0], binary_seg_result.shape[1], 3], dtype=np.uint8)
         coord = get_lane_embedding_feats_result['lane_coordinates']
+
+        # ============================== meanshift
+        # # 聚类簇超过八个则选择其中类内样本最多的八个聚类簇保留下来
+        # if meanshift_cluster_result['cluster_nums'] > 8:
+        #     cluster_sample_nums = []
+        #     for i in range(meanshift_cluster_result['cluster_nums']):
+        #         cluster_sample_nums.append(len(np.where(db_labels == i)[0]))
+        #     sort_idx = np.argsort(-np.array(cluster_sample_nums, np.int64))
+        #     unique_labels = unique_labels[sort_idx[0:8]]
+        # else:
+        #     unique_labels = unique_labels
+        # ==============================
 
         if db_labels is None:
             return None, None
