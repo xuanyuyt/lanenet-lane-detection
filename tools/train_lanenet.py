@@ -338,7 +338,7 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', version_flag='
     # ================================================================ #
     # set compute graph node for validation
     val_images, val_binary_labels, val_instance_labels = val_dataset.inputs(
-        CFG.TRAIN.VAL_BATCH_SIZE, 1
+        CFG.TEST.BATCH_SIZE, 1
     )
 
     val_compute_ret = val_net.compute_loss(
@@ -451,7 +451,7 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', version_flag='
     # Set the training parameters
     import math
     train_steps = CFG.TRAIN.STEPS
-    val_steps = math.ceil(CFG.TRAIN.VAL_SIZE / CFG.TRAIN.VAL_BATCH_SIZE) # 测试一个 epoch 需要的 batch 数量
+    val_steps = math.ceil(CFG.TRAIN.VAL_SIZE / CFG.TEST.BATCH_SIZE) # 测试一个 epoch 需要的 batch 数量
     one_epoch2step = math.ceil(CFG.TRAIN.TRAIN_SIZE / CFG.TRAIN.BATCH_SIZE) # 训练一个 epoch 需要的 batch 数量
 
     log.info('Global configuration is as follows:')
@@ -633,7 +633,7 @@ def train_lanenet_multi_gpu(dataset_dir, weights_path=None, net_flag='vgg', scra
         CFG.TRAIN.BATCH_SIZE, 1
     )
     val_images, val_binary_labels, val_instance_labels = val_dataset.inputs(
-        CFG.TRAIN.VAL_BATCH_SIZE, 1
+        CFG.TEST.BATCH_SIZE, 1
     )
 
     # set average container

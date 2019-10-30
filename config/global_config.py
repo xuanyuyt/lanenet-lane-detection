@@ -17,6 +17,9 @@ cfg = __C
 
 # Train options
 __C.TRAIN = edict()
+
+# "H:/Other_DataSets/TuSimple/train.txt"
+__C.TRAIN.LANE_PATH = "../../TuSimple/train.txt"
 __C.TRAIN.TRAIN_SIZE = 2439
 __C.TRAIN.VAL_SIZE = 2782
 # Set the shadownet training steps
@@ -35,8 +38,6 @@ __C.TRAIN.GPU_MEMORY_FRACTION = 0.95
 __C.TRAIN.TF_ALLOW_GROWTH = True
 # Set the shadownet training batch size
 __C.TRAIN.BATCH_SIZE = 16
-# Set the shadownet validation batch size
-__C.TRAIN.VAL_BATCH_SIZE = 10
 # Set the class numbers
 __C.TRAIN.CLASSES_NUMS = 2
 # Set the image height
@@ -55,12 +56,14 @@ __C.TRAIN.MOVING_AVERAGE_DECAY = 0.9999
 # Test options
 __C.TEST = edict()
 
+# "H:/Other_DataSets/TuSimple/val.txt"
+__C.TEST.LANE_PATH = "../../TuSimple/val.txt"
 # Set the GPU resource used during testing process
 __C.TEST.GPU_MEMORY_FRACTION = 0.8
 # Set the GPU allow growth parameter during tensorflow testing process
 __C.TEST.TF_ALLOW_GROWTH = True
 # Set the test batch size
-__C.TEST.BATCH_SIZE = 2
+__C.TEST.BATCH_SIZE = 10
 
 # Test options
 __C.POSTPROCESS = edict()
