@@ -34,12 +34,19 @@ def discriminative_loss_single(
     :param param_reg: weight regularization
     """
     # 像素对齐为一行
+    # correct_label = tf.reshape(
+    #     correct_label, [label_shape[1] * label_shape[0]]
+    # )
     correct_label = tf.reshape(
-        correct_label, [label_shape[1] * label_shape[0]]
+        correct_label, [-1,]
     )
+    # reshaped_pred = tf.reshape(
+    #     prediction, [label_shape[1] * label_shape[0], feature_dim]
+    # )
     reshaped_pred = tf.reshape(
-        prediction, [label_shape[1] * label_shape[0], feature_dim]
+        prediction, [-1, feature_dim]
     )
+
     # 统计实例个数
     # unique_labels统计出correct_label中一共有几种数值，unique_id为correct_label中的每个数值是属于unique_labels中第几类
     # counts统计unique_labels中每个数值在correct_label中出现了几次

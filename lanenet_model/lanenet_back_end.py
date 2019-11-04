@@ -77,22 +77,28 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
         with tf.variable_scope(name_or_scope=name, reuse=reuse):
             # calculate class weighted binary seg loss
             with tf.variable_scope(name_or_scope='binary_seg'):
+                # binary_label_onehot = tf.one_hot(
+                #     tf.reshape(
+                #         tf.cast(binary_label, tf.int32),
+                #         shape=[binary_label.get_shape().as_list()[0],
+                #                binary_label.get_shape().as_list()[1],
+                #                binary_label.get_shape().as_list()[2]]),
+                #     depth=CFG.TRAIN.CLASSES_NUMS,
+                #     axis=-1
+                # ) # 0/1 矩阵， 256x512x2
                 binary_label_onehot = tf.one_hot(
-                    tf.reshape(
-                        tf.cast(binary_label, tf.int32),
-                        shape=[binary_label.get_shape().as_list()[0],
-                               binary_label.get_shape().as_list()[1],
-                               binary_label.get_shape().as_list()[2]]),
+                    tf.cast(binary_label, tf.int32)[:,:,:,0],
                     depth=CFG.TRAIN.CLASSES_NUMS,
                     axis=-1
-                ) # 0/1 矩阵， 256x512x2
+                )  # 0/1 矩阵， 256x512x2
 
-                binary_label_plain = tf.reshape(
-                    binary_label,
-                    shape=[binary_label.get_shape().as_list()[0] *
-                           binary_label.get_shape().as_list()[1] *
-                           binary_label.get_shape().as_list()[2] *
-                           binary_label.get_shape().as_list()[3]])
+                # binary_label_plain = tf.reshape(
+                #     binary_label,
+                #     shape=[binary_label.get_shape().as_list()[0] *
+                #            binary_label.get_shape().as_list()[1] *
+                #            binary_label.get_shape().as_list()[2] *
+                #            binary_label.get_shape().as_list()[3]])
+                binary_label_plain = tf.reshape(binary_label,shape=[-1,])
                 unique_labels, unique_id, counts = tf.unique_with_counts(binary_label_plain)
                 counts = tf.cast(counts, tf.float32) # 每个类别的像素数量
                 inverse_weights = tf.divide(

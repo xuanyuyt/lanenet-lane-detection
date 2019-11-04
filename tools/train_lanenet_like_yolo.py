@@ -101,19 +101,19 @@ def train_lanenet(weights_path=None, net_flag='vgg', version_flag='', scratch=Fa
     # ========================== placeholder ========================= #
     with tf.name_scope('train_input'):
         train_input_tensor = tf.placeholder(dtype=tf.float32, name='input_image',
-                                      shape=[cfg.TRAIN.BATCH_SIZE, cfg.TRAIN.IMG_HEIGHT, cfg.TRAIN.IMG_WIDTH, 3])
+                                      shape=[None, None, None, 3])
         train_binary_label_tensor = tf.placeholder(dtype=tf.float32, name='binary_input_label',
-                                             shape=[cfg.TRAIN.BATCH_SIZE, cfg.TRAIN.IMG_HEIGHT, cfg.TRAIN.IMG_WIDTH, 1])
+                                             shape=[None, None, None, 1])
         train_instance_label_tensor = tf.placeholder(dtype=tf.float32, name='instance_input_label',
-                                               shape=[cfg.TRAIN.BATCH_SIZE, cfg.TRAIN.IMG_HEIGHT, cfg.TRAIN.IMG_WIDTH,1])
+                                               shape=[None, None, None,1])
 
     with tf.name_scope('val_input'):
         val_input_tensor = tf.placeholder(dtype=tf.float32, name='input_image',
-                                      shape=[cfg.TEST.BATCH_SIZE, cfg.TRAIN.IMG_HEIGHT, cfg.TRAIN.IMG_WIDTH, 3])
+                                      shape=[None, None, None, 3])
         val_binary_label_tensor = tf.placeholder(dtype=tf.float32, name='binary_input_label',
-                                             shape=[cfg.TEST.BATCH_SIZE, cfg.TRAIN.IMG_HEIGHT, cfg.TRAIN.IMG_WIDTH, 1])
+                                             shape=[None, None, None, 1])
         val_instance_label_tensor = tf.placeholder(dtype=tf.float32, name='instance_input_label',
-                                               shape=[cfg.TEST.BATCH_SIZE, cfg.TRAIN.IMG_HEIGHT, cfg.TRAIN.IMG_WIDTH,1])
+                                               shape=[None, None, None,1])
 
     # ================================================================ #
     #                           Define Network                         #
