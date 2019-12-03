@@ -29,7 +29,7 @@ from lanenet_model import lanenet
 from tools import evaluate_model_utils
 from config.global_config import cfg
 from data_provider.lanenet_data_providr_like_yolov3 import DataSet
-
+# from data_provider.dataset import MergeDataSet
 
 def init_args():
     parser = argparse.ArgumentParser()
@@ -42,7 +42,7 @@ def init_args():
                         help='Use multi gpus to train')
     parser.add_argument('--net_flag', type=str, default='mobilenet_v2',  # mobilenet_v2 vgg
                         help='The net flag which determins the net\'s architecture')
-    parser.add_argument('--version_flag', type=str, default='1030',
+    parser.add_argument('--version_flag', type=str, default='1113',
                         help='The net flag which determins the net\'s architecture')
     parser.add_argument('--scratch', type=bool, default=True,
                         help='Is training from scratch ?')
@@ -126,6 +126,7 @@ def train_lanenet(weights_path=None, net_flag='vgg', version_flag='', scratch=Fa
     #                       Train Input & Output                       #
     # ================================================================ #
     trainset = DataSet('train')
+    # trainset = MergeDataSet('train_lane')
     train_compute_ret = train_net.compute_loss(
         input_tensor=train_input_tensor, binary_label=train_binary_label_tensor,
         instance_label=train_instance_label_tensor, name='lanenet_model'
@@ -228,6 +229,7 @@ def train_lanenet(weights_path=None, net_flag='vgg', version_flag='', scratch=Fa
     #                        Val Input & Output                        #
     # ================================================================ #
     valset = DataSet('val', net_flag)
+    # valset = MergeDataSet('test_lane')
     val_compute_ret = val_net.compute_loss(
         input_tensor=val_input_tensor, binary_label=val_binary_label_tensor,
         instance_label=val_instance_label_tensor, name='lanenet_model'
@@ -351,24 +353,25 @@ def train_lanenet(weights_path=None, net_flag='vgg', version_flag='', scratch=Fa
     # ================================================================ #
     with sess.as_default():
         # ============================== load pretrain model
-        if weights_path is None:
-            log.info('Training from scratch')
-            sess.run(tf.global_variables_initializer())
-        elif net_flag == 'vgg' and weights_path is None:
-            load_pretrained_weights(tf.trainable_variables(), './data/vgg16.npy', sess)
-        elif scratch: # 从头开始训练，类似 Caffe 的 --weights
-            sess.run(tf.global_variables_initializer())
-            log.info('Restore model from last model checkpoint {:s}, scratch'.format(weights_path))
-            try:
-                restore_saver.restore(sess=sess, save_path=weights_path)
-            except:
-                log.info('model maybe is not exist!')
-        else: # 继续训练，类似 Caffe 的 --snapshot
-            log.info('Restore model from last model checkpoint {:s}'.format(weights_path))
-            try:
-                restore_saver.restore(sess=sess, save_path=weights_path)
-            except:
-                log.info('model maybe is not exist!')
+        # if weights_path is None:
+        #     log.info('Training from scratch')
+        #     sess.run(tf.global_variables_initializer())
+        # elif net_flag == 'vgg' and weights_path is None:
+        #     load_pretrained_weights(tf.trainable_variables(), './data/vgg16.npy', sess)
+        # elif scratch: # 从头开始训练，类似 Caffe 的 --weights
+        #     sess.run(tf.global_variables_initializer())
+        #     log.info('Restore model from last model checkpoint {:s}, scratch'.format(weights_path))
+        #     try:
+        #         restore_saver.restore(sess=sess, save_path=weights_path)
+        #     except:
+        #         log.info('model maybe is not exist!')
+        # else: # 继续训练，类似 Caffe 的 --snapshot
+        #     log.info('Restore model from last model checkpoint {:s}'.format(weights_path))
+        #     try:
+        #         restore_saver.restore(sess=sess, save_path=weights_path)
+        #     except:
+        #         log.info('model maybe is not exist!')
+        sess.run(tf.global_variables_initializer())
         # ==============================
         for epoch in range(total_epoch):
             # ================================================================ #
@@ -437,7 +440,7 @@ def train_lanenet(weights_path=None, net_flag='vgg', version_flag='', scratch=Fa
                     return
                 # ==============================
                 summary_writer.add_summary(summary=val_summary, global_step=val_step)
-                pbar_val.set_description(("val loss: %.4f, accuracy: %.4f") % (train_loss, val_accuracy_figure))
+                pbar_val.set_description(("val loss: %.4f, accuracy: %.4f") % (val_loss, val_accuracy_figure))
 
                 val_epoch_loss.append(val_loss)
                 val_epoch_binary_loss.append(val_binary_loss)

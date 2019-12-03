@@ -38,7 +38,7 @@ def init_args():
     """
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-d', '--dataset_dir', type=str,default='../../TuSimple/',
+    parser.add_argument('-d', '--dataset_dir', type=str,default='D:/Other_DataSets/TuSimple/',
                         help='Lanenet Dataset dir') # 'D:/Other_DataSets/TuSimple/'
     parser.add_argument('-w', '--weights_path', type=str,
                         # default='./model/tusimple_lanenet_vgg/tusimple_lanenet_vgg_changename.ckpt',
@@ -270,7 +270,7 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', version_flag='
     #                          Define Optimizer                        #
     # ================================================================ #
     # set optimizer
-    global_step = tf.Variable(0, trainable=False)
+    global_step = tf.Variable(0, trainable=False, name='global_step')
     # learning_rate = tf.train.cosine_decay_restarts( # 余弦衰减
     #     learning_rate=CFG.TRAIN.LEARNING_RATE,      # 初始学习率
     #     global_step=global_step,                    # 当前迭代次数

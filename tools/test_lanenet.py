@@ -37,7 +37,7 @@ def init_args():
     :return:
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--image_path', type=str, default='./data/tusimple_test_image/0.jpg',
+    parser.add_argument('--image_path', type=str, default='./data/tusimple_test_image/0.jpg', # ./data/tusimple_test_image/0.jpg
                         help='The image path or the src image save dir')
     parser.add_argument('--weights_path', type=str,
                         default='./model/tusimple_lanenet_mobilenet_v2_1005/tusimple_lanenet_3600_0.929177263960692.ckpt-3601',
@@ -47,6 +47,7 @@ def init_args():
                         help='Backbone Network Tag')
     parser.add_argument('--batch_size', type=int, help='The batch size of the test images', default=1)
     parser.add_argument('--save_dir', type=str, help='Test result image save dir', default='out')
+    parser.add_argument('--use_gpu', type=bool, help='if use GPU', default=True)
 
     return parser.parse_args()
 
@@ -142,7 +143,7 @@ def test_lanenet(image_path, weights_path, net_flag):
             [binary_seg_ret, instance_seg_ret],
             feed_dict={input_tensor: [image]}
         )
-        # np.savez('CV22_seg_iamge',binary_seg_image=binary_seg_image,instance_seg_image =instance_seg_image)
+        # np.savez('PC_seg_iamge',binary_seg_image=binary_seg_image[0],instance_seg_image =instance_seg_image[0])
         t_cost = time.time() - t_start
         log.info('Single imgae inference cost time: {:.5f}s'.format(t_cost))
 
@@ -205,9 +206,9 @@ def test_lanenet_batch(image_dir, weights_path, batch_size, use_gpu, save_dir=No
 
     # Set sess configuration
     if use_gpu:
-        sess_config = tf.ConfigProto(device_count={'GPU': 1})
-    else:
         sess_config = tf.ConfigProto(device_count={'GPU': 0})
+    else:
+        sess_config = tf.ConfigProto(device_count={'CPU': 0})
     sess_config.gpu_options.per_process_gpu_memory_fraction = CFG.TEST.GPU_MEMORY_FRACTION
     sess_config.gpu_options.allow_growth = CFG.TRAIN.TF_ALLOW_GROWTH
     sess_config.gpu_options.allocator_type = 'BFC'
@@ -297,5 +298,5 @@ if __name__ == '__main__':
     if args.batch_size == 1:
         test_lanenet(args.image_path, args.weights_path, args.net_flag)
     else:
-        test_lanenet_batch(args.image_path, args.weights_path, args.save_dir,
-                           args.use_gpu, args.batch_size, args.net_flag)
+        test_lanenet_batch(args.image_path, args.weights_path,args.batch_size,
+                           args.use_gpu, args.save_dir, args.net_flag)

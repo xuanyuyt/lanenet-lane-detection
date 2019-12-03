@@ -25,13 +25,13 @@ def init_args():
     :return:
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--src_dir', type=str, default='H:/Other_DataSets/TuSimple/TuSimple',
+    parser.add_argument('--src_dir', type=str, default='D:/Other_DataSets/TuSimple/',
                         help='The origin path of unzipped tusimple dataset')
 
     return parser.parse_args()
 
 
-def process_json_file(json_file_path, src_dir, ori_dst_dir, binary_dst_dir, instance_dst_dir):
+def process_json_file(json_file_path, src_dir, ori_dst_dir, binary_dst_dir, instance_dst_dir, start_index):
     """
 
     :param json_file_path:
@@ -43,11 +43,12 @@ def process_json_file(json_file_path, src_dir, ori_dst_dir, binary_dst_dir, inst
     """
     assert ops.exists(json_file_path), '{:s} not exist'.format(json_file_path)
 
-    image_nums = len(os.listdir(ori_dst_dir))
     count_unlabeled = 0
+    tmp_index = 0
 
     with open(json_file_path, 'r') as file:
         for line_index, line in enumerate(file):
+            tmp_index += 1
             labeled = True
             info_dict = json.loads(line)
 
@@ -57,7 +58,7 @@ def process_json_file(json_file_path, src_dir, ori_dst_dir, binary_dst_dir, inst
             h_samples = info_dict['h_samples']
             lanes = info_dict['lanes']
 
-            image_name_new = '{:s}.png'.format('{:d}'.format(line_index + image_nums).zfill(4))
+            image_name_new = '{:s}.png'.format('{:d}'.format(line_index + start_index).zfill(4))
 
             src_image = cv2.imread(image_path, cv2.IMREAD_COLOR)
             dst_binary_image = np.zeros([src_image.shape[0], src_image.shape[1]], np.uint8)
@@ -100,6 +101,8 @@ def process_json_file(json_file_path, src_dir, ori_dst_dir, binary_dst_dir, inst
 
             print('Process {:s} success'.format(image_path))
         print(count_unlabeled, 'has not labeled lane')
+    start_index += tmp_index
+    return start_index
 
 
 def gen_train_sample(src_dir, b_gt_image_dir, i_gt_image_dir, image_dir):
@@ -209,9 +212,10 @@ def process_tusimple_dataset(src_dir):
         os.makedirs(gt_binary_dir)
     if not os.path.exists(gt_instance_dir):
         os.makedirs(gt_instance_dir)
-
-    for json_label_path in glob.glob('{:s}/*.json'.format(training_folder_path)):
-        process_json_file(json_label_path, src_dir, gt_image_dir, gt_binary_dir, gt_instance_dir)
+    start_index = 0
+    train_src_dir = os.path.join(src_dir, 'train_set')
+    for json_label_path in glob.glob('{:s}/*.json'.format(train_src_dir)):
+        start_index = process_json_file(json_label_path, train_src_dir, gt_image_dir, gt_binary_dir, gt_instance_dir, start_index)
 
     gen_train_sample(src_dir, gt_binary_dir, gt_instance_dir, gt_image_dir)
 
@@ -228,9 +232,10 @@ def process_tusimple_dataset(src_dir):
         os.makedirs(gt_binary_dir)
     if not os.path.exists(gt_instance_dir):
         os.makedirs(gt_instance_dir)
-
-    for json_label_path in glob.glob('{:s}/*.json'.format(testing_folder_path)):
-        process_json_file(json_label_path, src_dir, gt_image_dir, gt_binary_dir, gt_instance_dir)
+    start_index = 0
+    test_src_dir = os.path.join(src_dir, 'test_set')
+    for json_label_path in glob.glob('{:s}/*.json'.format(test_src_dir)):
+        process_json_file(json_label_path, test_src_dir, gt_image_dir, gt_binary_dir, gt_instance_dir, start_index)
 
     gen_test_sample(src_dir, gt_binary_dir, gt_instance_dir, gt_image_dir)
 
