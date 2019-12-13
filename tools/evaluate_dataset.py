@@ -20,6 +20,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import tensorflow as tf
 import glog as log
 import numpy as np
+import cv2
 
 from lanenet_model import lanenet
 from data_provider import lanenet_data_processor
@@ -42,8 +43,8 @@ def init_args():
                         default='./model/tusimple_lanenet_mobilenet_v2_1005/tusimple_lanenet_3600_0.929177263960692.ckpt-3601',
                         # default='./model/tusimple_lanenet_vgg/tusimple_lanenet_vgg_changename.ckpt',
                         help='The lanenet model weights path')
-    parser.add_argument('--batch_size', type=int, help='The batch size of the test images', default=2)
-    parser.add_argument('--use_gpu', type=int, help='If use gpu set 1 or 0 instead', default=1)
+    parser.add_argument('--batch_size', type=int, help='The batch size of the test images', default=1)
+    parser.add_argument('--use_gpu', type=int, help='If use gpu set 1 or 0 instead', default=0)
     parser.add_argument('--net_flag', type=str, default='mobilenet_v2', # vgg mobilenet_v2
                         help='Backbone Network Tag')
 
@@ -63,7 +64,15 @@ def test_lanenet_batch(image_list, weights_path, batch_size, use_gpu, net_flag='
     assert ops.exists(image_list), '{:s} not exist'.format(image_list)
 
     log.info('开始加载数据集列表...')
-    test_dataset = lanenet_data_processor.DataSet(image_list)
+    test_dataset = lanenet_data_processor.DataSet(image_list, traing=False)
+
+    # ==============================
+    gt_label_binary_list = []
+    with open(image_list, 'r') as file:
+        for _info in file:
+            info_tmp = _info.strip(' ').split()
+            gt_label_binary_list.append(info_tmp[1])
+    # ==============================
 
     input_tensor = tf.placeholder(dtype=tf.float32, shape=[None, 256, 512, 3], name='input_tensor')
     binary_label_tensor = tf.placeholder(dtype=tf.int64,
@@ -97,7 +106,7 @@ def test_lanenet_batch(image_list, weights_path, batch_size, use_gpu, net_flag='
         total_num = 0
         t_start = time.time()
         for epoch in range(epoch_nums):
-            gt_imgs, binary_gt_labels, instance_gt_labels = test_dataset.next_batch(batch_size, net_flag)
+            gt_imgs, binary_gt_labels, instance_gt_labels = test_dataset.next_batch(batch_size)
             if net_flag == 'vgg':
                 image_list_epoch = [tmp / 127.5 - 1.0 for tmp in gt_imgs]
             elif net_flag == 'mobilenet_v2':
@@ -106,13 +115,21 @@ def test_lanenet_batch(image_list, weights_path, batch_size, use_gpu, net_flag='
             binary_seg_images, instance_seg_images, recall, fp, fn, precision, accuracy = sess.run(
                 [binary_seg_ret, instance_seg_ret, recall_ret, false_positive, false_negative, precision_ret, accuracy_ret],
                 feed_dict={input_tensor: image_list_epoch, binary_label_tensor: binary_gt_labels})
+            # ==============================
+            out_dir = 'H:/Other_DataSets/TuSimple/out/'
+            dst_binary_image_path = ops.join(out_dir,gt_label_binary_list[epoch])
+            root_dir = ops.dirname(ops.abspath(dst_binary_image_path))
+            if not os.path.exists(root_dir):
+                os.makedirs(root_dir)
+            cv2.imwrite(dst_binary_image_path, binary_seg_images[0] * 255)
+            # ==============================
+            print(recall, fp, fn)
             mean_accuracy += accuracy
             mean_precision += precision
             mean_recall += recall
             mean_fp += fp
             mean_fn += fn
             total_num += len(gt_imgs)
-            print(recall, fp, fn)
         t_cost = time.time() - t_start
         mean_accuracy = mean_accuracy / epoch_nums
         mean_precision = mean_precision / epoch_nums
@@ -124,7 +141,10 @@ def test_lanenet_batch(image_list, weights_path, batch_size, use_gpu, net_flag='
 
     sess.close()
 
-    return
+"""
+测试 2782 张图片，耗时529.4126558303833，mobilenet_v2_recall = 0.9335565098483821, precision = 0.9500883211213997, 
+accuracy = 0.9400811002186817, fp = 0.8713319645920296, fn = 0.06644349015161731, 
+"""
 
 
 if __name__ == '__main__':
@@ -133,4 +153,6 @@ if __name__ == '__main__':
 
     test_lanenet_batch(image_list=args.image_list, weights_path=args.weights_path,
                        use_gpu=args.use_gpu, batch_size=args.batch_size, net_flag=args.net_flag)
+
+
 

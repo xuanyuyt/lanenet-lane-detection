@@ -33,14 +33,22 @@ def init_args():
     :return:
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--image_dir', type=str, help='The source tusimple lane test data dir')
-    parser.add_argument('--weights_path', type=str, help='The model weights path')
-    parser.add_argument('--save_dir', type=str, help='The test output save root dir')
+    parser.add_argument('--image_dir', type=str,
+                        default='H:/Other_DataSets/TuSimple/test_set/',
+                        help='The source tusimple lane test data dir')
+    parser.add_argument('--weights_path', type=str,
+                        default='./model/tusimple_lanenet_mobilenet_v2_1005/tusimple_lanenet_3600_0.929177263960692.ckpt-3601',
+                        help='The model weights path')
+    parser.add_argument('--save_dir', type=str,
+                        default='H:/Other_DataSets/TuSimple/out/',
+                        help='The test output save root dir')
+    parser.add_argument('--net_flag', type=str, default='mobilenet_v2', # vgg mobilenet_v2
+                        help='Backbone Network Tag')
 
     return parser.parse_args()
 
 
-def test_lanenet_batch(src_dir, weights_path, save_dir):
+def test_lanenet_batch(src_dir, weights_path, save_dir, net_flag):
     """
 
     :param src_dir:
@@ -54,7 +62,7 @@ def test_lanenet_batch(src_dir, weights_path, save_dir):
 
     input_tensor = tf.placeholder(dtype=tf.float32, shape=[1, 256, 512, 3], name='input_tensor')
 
-    net = lanenet.LaneNet(phase='test', net_flag='vgg')
+    net = lanenet.LaneNet(phase='test', net_flag=net_flag)
     binary_seg_ret, instance_seg_ret = net.inference(input_tensor=input_tensor, name='lanenet_model')
 
     postprocessor = lanenet_postprocess.LaneNetPostProcessor()
@@ -122,5 +130,6 @@ if __name__ == '__main__':
     test_lanenet_batch(
         src_dir=args.image_dir,
         weights_path=args.weights_path,
-        save_dir=args.save_dir
+        save_dir=args.save_dir,
+        net_flag = args.net_flag
     )

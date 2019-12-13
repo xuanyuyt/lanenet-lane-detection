@@ -96,7 +96,7 @@ def test_lanenet(image_path, weights_path, net_flag):
     image = cv2.imread(image_path, cv2.IMREAD_COLOR)
     image_vis = image
     # ======================
-    image = cv2.resize(image, (512, 256), interpolation=cv2.INTER_LINEAR) # W521 x H256
+    image = cv2.resize(image, (CFG.TRAIN.IMG_WIDTH, CFG.TRAIN.IMG_HEIGHT), interpolation=cv2.INTER_LINEAR) # W521 x H256
     if net_flag == 'vgg':
         image = image / 127.5 - 1.0 # 归一化到 -1,1
     elif net_flag == 'mobilenet_v2':
@@ -168,9 +168,10 @@ def test_lanenet(image_path, weights_path, net_flag):
         plt.imshow(binary_seg_image[0] * 255, cmap='gray')
         plt.show()
 
-        # cv2.imwrite('instance_mask_image.png', mask_image)
-        # cv2.imwrite('source_image.png', postprocess_result['source_image'])
-        # cv2.imwrite('binary_mask_image.png', binary_seg_image[0] * 255)
+        cv2.imwrite('instance_mask_image.png', mask_image)
+        cv2.imwrite('instance_image.png', embedding_image)
+        cv2.imwrite('source_image.png', postprocess_result['source_image'])
+        cv2.imwrite('binary_mask_image.png', binary_seg_image[0] * 255)
 
     sess.close()
 
