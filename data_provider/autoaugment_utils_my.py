@@ -1954,7 +1954,7 @@ NAME_TO_FUNC = {
     'BBox_Cutout': bbox_cutout,
     'Rotate_BBox': rotate_with_bboxes,
     # pylint:disable=g-long-lambda
-    'TranslateX_BBox': lambda image, bboxes, pixels, replace: translate_bbox(# TODO
+    'TranslateX_BBox': lambda image, bboxes, pixels, replace: translate_bbox(
         image, bboxes, pixels, replace, shift_horizontal=True),
     'TranslateY_BBox': lambda image, bboxes, pixels, replace: translate_bbox(
         image, bboxes, pixels, replace, shift_horizontal=False),

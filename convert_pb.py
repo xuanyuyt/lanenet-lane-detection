@@ -16,9 +16,9 @@ import tensorflow as tf
 from lanenet_model import lanenet
 
 
-pb_file = "model/tusimple_lanenet_mobilenet_v2_1005/culane_lanenet_mobilenet_v2_1005.pb"
+pb_file = "model/tusimple_lanenet_mobilenet_v2_1005/culane_lanenet_mobilenet_v2_1213.pb"
 #ckpt_file = cfg.YOLO.DEMO_WEIGHT
-ckpt_file = 'model/tusimple_lanenet_mobilenet_v2_1005/tusimple_lanenet_3600_0.929177263960692.ckpt-3601'
+ckpt_file = 'model/tusimple_lanenet_mobilenet_v2_1005/culane_lanenet_mobilenet_v2_1005_reduce_train.ckpt'
 # output_node_names = ["input/input_data", "pred_sbbox/concat_2", "pred_mbbox/concat_2", "pred_lbbox/concat_2"]
 #
 #output_node_names = ["input_tensor", "lanenet_loss/inference/decode/score_final/Conv2D", "lanenet_loss/pix_embedding_conv/Conv2D"]

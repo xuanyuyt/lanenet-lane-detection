@@ -369,3 +369,15 @@ if __name__ == '__main__':
     ret = model.build_model(test_in_tensor, name='vgg16fcn')
     for layer_name, layer_info in ret.items():
         print('layer name: {:s} shape: {}'.format(layer_name, layer_info['shape']))
+
+    """
+    layer name: encode_stage_1_share shape: [1, 256, 512, 64]
+    layer name: encode_stage_2_share shape: [1, 128, 256, 128]
+    layer name: encode_stage_3_share shape: [1, 64, 128, 256]
+    layer name: encode_stage_4_share shape: [1, 32, 64, 512]
+    layer name: encode_stage_5_binary shape: [1, 16, 32, 512]
+    layer name: encode_stage_5_instance shape: [1, 16, 32, 512]
+    layer name: binary_segment_logits shape: [1, 256, 512, 2]
+    layer name: instance_segment_logits shape: [1, 256, 512, 64]
+
+    """

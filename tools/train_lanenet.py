@@ -10,7 +10,6 @@ Train lanenet script
 """
 import argparse
 import math
-import os
 import os.path as ops
 import time
 
@@ -21,7 +20,7 @@ import tensorflow as tf
 import sys
 sys.path.append('./')
 import os
-GPU_IDS = '5'
+GPU_IDS = '0'
 os.environ["CUDA_VISIBLE_DEVICES"] = GPU_IDS
 from config import global_config
 from data_provider import lanenet_data_feed_pipline
@@ -38,8 +37,8 @@ def init_args():
     """
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-d', '--dataset_dir', type=str,default='D:/Other_DataSets/TuSimple/',
-                        help='Lanenet Dataset dir') # 'D:/Other_DataSets/TuSimple/'
+    parser.add_argument('-d', '--dataset_dir', type=str,default='H:/Other_DataSets/TuSimple/',
+                        help='Lanenet Dataset dir')
     parser.add_argument('-w', '--weights_path', type=str,
                         # default='./model/tusimple_lanenet_vgg/tusimple_lanenet_vgg_changename.ckpt',
                         default='./model/tusimple_lanenet_mobilenet_v2_1005/tusimple_lanenet_3600_0.929177263960692.ckpt-3601',
@@ -48,7 +47,7 @@ def init_args():
                         help='Use multi gpus to train')
     parser.add_argument('--net_flag', type=str, default='mobilenet_v2', # mobilenet_v2 vgg
                         help='The net flag which determins the net\'s architecture')
-    parser.add_argument('--version_flag', type=str, default='1018',
+    parser.add_argument('--version_flag', type=str, default='0403',
                         help='The net flag which determins the net\'s architecture')
     parser.add_argument('--scratch', type=bool, default=True,
                         help='Is training from scratch ?')
@@ -207,10 +206,12 @@ def compute_net_gradients(gt_images, gt_binary_labels, gt_instance_labels,
 
 def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', version_flag='', scratch=False):
     """
-
+    Train LaneNet With One GPU
     :param dataset_dir:
-    :param net_flag: choose which base network to use
     :param weights_path:
+    :param net_flag:
+    :param version_flag:
+    :param scratch:
     :return:
     """
     train_dataset = lanenet_data_feed_pipline.LaneNetDataFeeder(
@@ -232,7 +233,7 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', version_flag='
     # ================================================================ #
     # set compute graph node for training
     train_images, train_binary_labels, train_instance_labels = train_dataset.inputs(
-        CFG.TRAIN.BATCH_SIZE, 1
+        CFG.TRAIN.BATCH_SIZE
     )
 
     train_compute_ret = train_net.compute_loss(
@@ -338,7 +339,7 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', version_flag='
     # ================================================================ #
     # set compute graph node for validation
     val_images, val_binary_labels, val_instance_labels = val_dataset.inputs(
-        CFG.TEST.BATCH_SIZE, 1
+        CFG.TEST.BATCH_SIZE
     )
 
     val_compute_ret = val_net.compute_loss(
@@ -424,7 +425,7 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', version_flag='
         """
         variables = tf.contrib.framework.get_variables_to_restore()
         variables_to_resotre = [v for v in variables if 'Momentum' not in v.name.split('/')[-1]]
-        variables_to_resotre = [v for v in variables_to_resotre if 'Variable' not in v.name.split('/')[-1]] # remove global step
+        variables_to_resotre = [v for v in variables_to_resotre if 'global_step' not in v.name.split('/')[-1]]
         restore_saver = tf.train.Saver(variables_to_resotre)
     else:
         restore_saver = tf.train.Saver()
@@ -608,7 +609,7 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg', version_flag='
     return
 
 
-def train_lanenet_multi_gpu(dataset_dir, weights_path=None, net_flag='vgg', scratch=False):
+def train_lanenet_multi_gpu(dataset_dir, weights_path=None, net_flag='vgg', version_flag='', scratch=False):
     """
     train lanenet with multi gpu
     :param dataset_dir:
@@ -819,6 +820,7 @@ if __name__ == '__main__':
     if len(GPU_IDS.split(',')) < 2:
         args.multi_gpus = False
     print('GPU_IDS: ', GPU_IDS)
+
     # train lanenet
     if not args.multi_gpus:
         train_lanenet(args.dataset_dir, args.weights_path, net_flag=args.net_flag,

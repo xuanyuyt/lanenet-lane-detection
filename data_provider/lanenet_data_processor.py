@@ -102,7 +102,7 @@ class DataSet(object):
             if self._traing:
                 self._random_dataset()
             self._next_batch_loop_count = 0
-            return self.next_batch(batch_size) # 最后的样本可能会训不到
+            return self.next_batch(batch_size) # 不足 batch_size 的样本会被丢弃
         else:
             gt_img_list = self._gt_img_list[idx_start:idx_end]
             gt_label_binary_list = self._gt_label_binary_list[idx_start:idx_end]

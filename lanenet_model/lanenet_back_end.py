@@ -21,6 +21,7 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
     """
     LaneNet backend branch which is mainly used for binary and instance segmentation loss calculation
     """
+
     def __init__(self, phase):
         """
         init lanenet backend
@@ -63,7 +64,7 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
 
     def compute_loss(self, binary_seg_logits, binary_label,
                      instance_seg_logits, instance_label,
-                     name, reuse, need_layer_norm = True):
+                     name, reuse, need_layer_norm=True):
         """
         compute lanenet loss
         :param binary_seg_logits: 256x512x2
@@ -85,12 +86,13 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                 #                binary_label.get_shape().as_list()[2]]),
                 #     depth=CFG.TRAIN.CLASSES_NUMS,
                 #     axis=-1
-                # ) # 0/1 矩阵， 256x512x2
+                # ) # 256x512x1 -> 256x512x2(one-hot)
+
                 binary_label_onehot = tf.one_hot(
-                    tf.cast(binary_label, tf.int32)[:,:,:,0],
+                    tf.cast(binary_label, tf.int32)[:, :, :, 0],
                     depth=CFG.TRAIN.CLASSES_NUMS,
                     axis=-1
-                )  # 0/1 矩阵， 256x512x2
+                )  # 256x512x1 -> 256x512x2(one-hot)
 
                 # binary_label_plain = tf.reshape(
                 #     binary_label,
@@ -98,13 +100,14 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                 #            binary_label.get_shape().as_list()[1] *
                 #            binary_label.get_shape().as_list()[2] *
                 #            binary_label.get_shape().as_list()[3]])
-                binary_label_plain = tf.reshape(binary_label,shape=[-1,])
+
+                binary_label_plain = tf.reshape(binary_label, shape=[-1, ]) #
                 unique_labels, unique_id, counts = tf.unique_with_counts(binary_label_plain)
-                counts = tf.cast(counts, tf.float32) # 每个类别的像素数量
+                counts = tf.cast(counts, tf.float32)  # 每个类别的像素数量
                 inverse_weights = tf.divide(
                     1.0,
                     tf.log(tf.add(tf.divide(counts, tf.reduce_sum(counts)), tf.constant(1.02)))
-                ) # 1/log(counts/all_counts + 1.02)
+                )  # 1/log(counts/all_counts + 1.02)
 
                 binary_segmentation_loss = self._compute_class_weighted_cross_entropy_loss(
                     onehot_labels=binary_label_onehot,
@@ -126,11 +129,11 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                     use_bias=False,
                     name='pix_embedding_conv'
                 )
-                pix_image_shape = (pix_embedding.get_shape().as_list()[1], pix_embedding.get_shape().as_list()[2])
+
                 instance_segmentation_loss, l_var, l_dist, l_reg = \
                     lanenet_discriminative_loss.discriminative_loss(
                         pix_embedding, instance_label, CFG.TRAIN.EMBEDDING_FEATS_DIMS,
-                        pix_image_shape, delta_v=0.5, delta_d=3.0, param_var=1.0, param_dist=1.0, param_reg=0.001
+                        delta_v=0.5, delta_d=3.0, param_var=1.0, param_dist=1.0, param_reg=0.001
                     )
 
             l2_reg_loss = tf.constant(0.0, tf.float32)
@@ -164,7 +167,6 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
         :return:
         """
         with tf.variable_scope(name_or_scope=name, reuse=reuse):
-
             with tf.variable_scope(name_or_scope='binary_seg'):
                 binary_seg_score = tf.nn.softmax(logits=binary_seg_logits)
                 binary_seg_prediction = tf.argmax(binary_seg_score, axis=-1)
@@ -184,6 +186,7 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                 )
 
         return binary_seg_prediction, instance_seg_prediction
+
 
 if __name__ == '__main__':
     backend = LaneNetBackEnd(phase='train')

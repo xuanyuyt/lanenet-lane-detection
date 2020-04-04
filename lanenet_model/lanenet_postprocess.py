@@ -275,8 +275,7 @@ class _LaneNetCluster(object):
         dbscan_cluster_result = self._embedding_feats_dbscan_cluster(
             embedding_image_feats=get_lane_embedding_feats_result['lane_embedding_feats']
         )
-        db_labels = dbscan_cluster_result['db_labels']
-        unique_labels = dbscan_cluster_result['unique_labels']
+
         # ============================== meanshift
         # meanshift cluster
         # meanshift_cluster_result = self._embedding_feats_meanshift_cluster(
@@ -288,6 +287,8 @@ class _LaneNetCluster(object):
         # ==============================
 
         mask = np.zeros(shape=[binary_seg_result.shape[0], binary_seg_result.shape[1], 3], dtype=np.uint8)
+        db_labels = dbscan_cluster_result['db_labels']
+        unique_labels = dbscan_cluster_result['unique_labels']
         coord = get_lane_embedding_feats_result['lane_coordinates']
 
         # ============================== meanshift

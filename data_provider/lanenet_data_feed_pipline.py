@@ -9,22 +9,19 @@
 Lanenet data feed pip line
 """
 import argparse
-import glob
 import os
 import os.path as ops
+import glob
 import random
-
 import glog as log
-import tensorflow as tf
 # =============
 import sys
 sys.path.append('./')
 # =============
-from config import global_config
 from data_provider import tf_io_pipline_tools
-
+import tensorflow as tf
+from config import global_config
 CFG = global_config.cfg
-
 
 def init_args():
     """
@@ -32,15 +29,17 @@ def init_args():
     :return:
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset_dir', type=str, default='../../TuSimple', help='The source nsfw data dir path')
-    parser.add_argument('--tfrecords_dir', type=str, default='../../TuSimple/tfrecords',help='The dir path to save converted tfrecords')
+    parser.add_argument('--dataset_dir', type=str, default='H:/Other_DataSets/TuSimple/',
+                        help='The source nsfw data dir path')
+    parser.add_argument('--tfrecords_dir', type=str, default='H:/Other_DataSets/TuSimple/tfrecords',
+                        help='The dir path to save converted tfrecords')
 
     return parser.parse_args()
 
 
 class LaneNetDataProducer(object):
     """
-    Convert raw image file into tfrecords
+    convert raw image file into tfrecords
     """
 
     def __init__(self, dataset_dir):
@@ -49,7 +48,6 @@ class LaneNetDataProducer(object):
         :param dataset_dir:
         """
         self._dataset_dir = dataset_dir
-
         self._gt_image_dir = ops.join(dataset_dir, 'gt_image')
         self._gt_binary_image_dir = ops.join(dataset_dir, 'gt_binary_image')
         self._gt_instance_image_dir = ops.join(dataset_dir, 'gt_instance_image')
@@ -60,10 +58,82 @@ class LaneNetDataProducer(object):
 
         # if not self._is_source_data_complete():
         #     raise ValueError('Source image data is not complete, '
-        #                      'please check if one of the image folder is not exist')
-        # 如果训练测试列表不存在，创建
-        if not self._is_training_sample_index_file_complete():
-            self._generate_training_example_index_file()
+        #                      'Please check if one of the image folder is not exist!')
+
+        # if data list is not exist, re-create
+        # if not self._is_training_sample_index_file_complete():
+        #     self._generate_training_example_index_file()
+
+    def _is_source_data_complete(self):
+        """
+        Check if source data complete
+        """
+        return ops.exists(self._gt_image_dir) and \
+               ops.exists(self._gt_binary_image_dir) and \
+               ops.exists(self._gt_instance_image_dir)
+
+    def _is_training_sample_index_file_complete(self):
+        """
+        Check if the training sample index file is complete
+        """
+        return ops.exists(self._train_example_index_file_path) \
+               and ops.exists(self._val_example_index_file_path) \
+            # and ops.exists(self._test_example_index_file_path)
+
+    def _generate_training_example_index_file(self):
+        """
+        Generate training example index file, split source file into 0.85, 0.1, 0.05 for training,
+        testing and validation. Each image folder are processed separately
+        """
+
+        def _gather_example_info():
+            """
+            get image abs path for dir
+            :return:
+            """
+            _info = []
+            for _gt_image_path in glob.glob('{:s}/*.png'.format(self._gt_image_dir)):
+                _gt_binary_image_name = ops.split(_gt_image_path)[1]
+                _gt_binary_image_path = ops.join(self._gt_binary_image_dir, _gt_binary_image_name)
+                _gt_instance_image_name = ops.split(_gt_image_path)[1]
+                _gt_instance_image_path = ops.join(self._gt_instance_image_dir, _gt_instance_image_name)
+
+                assert ops.exists(_gt_binary_image_path), '{:s} not exist'.format(_gt_binary_image_path)
+                assert ops.exists(_gt_instance_image_path), '{:s} not exist'.format(_gt_instance_image_path)
+
+                _info.append('{:s} {:s} {:s}\n'.format(
+                    _gt_image_path,
+                    _gt_binary_image_path,
+                    _gt_instance_image_path)
+                )
+            return _info
+
+        def _split_training_examples(_example_info):
+            random.shuffle(_example_info)
+            _example_nums = len(_example_info)
+
+            _train_example_info = _example_info[: int(_example_nums * 0.85)]
+            _val_example_info = _example_info[int(_example_nums * 0.85):int(_example_nums * 0.9)]
+            _test_example_info = _example_info[int(_example_nums * 0.9):]
+
+            return _train_example_info, _test_example_info, _val_example_info
+
+        train_example_info, test_example_info, val_example_info = _split_training_examples(_gather_example_info())
+
+        random.shuffle(train_example_info)
+        random.shuffle(val_example_info)
+        random.shuffle(test_example_info)
+
+        with open(ops.join(self._dataset_dir, 'train.txt'), 'w') as file:
+            file.write(''.join(train_example_info))
+
+        with open(ops.join(self._dataset_dir, 'test.txt'), 'w') as file:
+            file.write(''.join(test_example_info))
+
+        with open(ops.join(self._dataset_dir, 'val.txt'), 'w') as file:
+            file.write(''.join(val_example_info))
+
+        log.info('Generating training example index file complete')
 
     def generate_tfrecords(self, save_dir, step_size=10000):
         """
@@ -80,13 +150,13 @@ class LaneNetDataProducer(object):
             _example_gt_path_info = []
             _example_gt_binary_path_info = []
             _example_gt_instance_path_info = []
-            root_dir = os.path.dirname(os.path.abspath(_index_file_path))
+            root_dir = ops.dirname(ops.abspath(_index_file_path))
             with open(_index_file_path, 'r') as _file:
                 for _line in _file:
-                    _example_info = _line.rstrip('\r').rstrip('\n').split(' ')
-                    _example_gt_path_info.append(os.path.join(root_dir, _example_info[0]))
-                    _example_gt_binary_path_info.append(os.path.join(root_dir, _example_info[1]))
-                    _example_gt_instance_path_info.append(os.path.join(root_dir, _example_info[2]))
+                    _example_info = _line.rstrip().split(' ')
+                    _example_gt_path_info.append(ops.join(root_dir, _example_info[0]))
+                    _example_gt_binary_path_info.append(ops.join(root_dir, _example_info[1]))
+                    _example_gt_instance_path_info.append(ops.join(root_dir, _example_info[2]))
 
             ret = {
                 'gt_path_info': _example_gt_path_info,
@@ -98,6 +168,9 @@ class LaneNetDataProducer(object):
 
         def _split_writing_tfrecords_task(
                 _example_gt_paths, _example_gt_binary_paths, _example_gt_instance_paths, _flags='train'):
+            """
+            according step size split examples
+            """
 
             _split_example_gt_paths = []
             _split_example_gt_binary_paths = []
@@ -111,10 +184,12 @@ class LaneNetDataProducer(object):
 
                 if i + step_size > len(_example_gt_paths):
                     _split_tfrecords_save_paths.append(
-                        ops.join(save_dir, '{:s}_{:d}_{:d}.tfrecords'.format(_flags, i, len(_example_gt_paths))))
+                        ops.join(save_dir, '{:s}_{:d}_{:d}.tfrecords'.format(_flags, i, len(_example_gt_paths)))
+                    )
                 else:
                     _split_tfrecords_save_paths.append(
-                        ops.join(save_dir, '{:s}_{:d}_{:d}.tfrecords'.format(_flags, i, i + step_size)))
+                        ops.join(save_dir, '{:s}_{:d}_{:d}.tfrecords'.format(_flags, i, i + step_size))
+                    )
 
             ret = {
                 'gt_paths': _split_example_gt_paths,
@@ -125,11 +200,15 @@ class LaneNetDataProducer(object):
 
             return ret
 
-        # make save dirs
+            # make save dirs
         os.makedirs(save_dir, exist_ok=True)
 
-        # start generating training example tfrecords
+        # ================================================================ #
+        #            start generating training example tfrecords           #
+        # ================================================================ #
         log.info('Start generating training example tfrecords')
+        if not ops.exists(self._train_example_index_file_path):
+            return
 
         # collecting train images paths info
         train_image_paths_info = _read_training_example_index_file(self._train_example_index_file_path)
@@ -139,7 +218,8 @@ class LaneNetDataProducer(object):
 
         # split training images according step size
         train_split_result = _split_writing_tfrecords_task(
-            train_gt_images_paths, train_gt_binary_images_paths, train_gt_instance_images_paths, _flags='train')
+            train_gt_images_paths, train_gt_binary_images_paths, train_gt_instance_images_paths, _flags='train'
+        )
         train_example_gt_paths = train_split_result['gt_paths']
         train_example_gt_binary_paths = train_split_result['gt_binary_paths']
         train_example_gt_instance_paths = train_split_result['gt_instance_paths']
@@ -155,8 +235,12 @@ class LaneNetDataProducer(object):
 
         log.info('Generating training example tfrecords complete')
 
-        # start generating validation example tfrecords
+        # ================================================================ #
+        #           start generating validation example tfrecords          #
+        # ================================================================ #
         log.info('Start generating validation example tfrecords')
+        if not ops.exists(self._val_example_index_file_path):
+            return
 
         # collecting validation images paths info
         val_image_paths_info = _read_training_example_index_file(self._val_example_index_file_path)
@@ -182,9 +266,10 @@ class LaneNetDataProducer(object):
 
         log.info('Generating validation example tfrecords complete')
 
-        # generate test example tfrecords
+        # ================================================================ #
+        #               start generate test example tfrecords              #
+        # ================================================================ #
         log.info('Start generating testing example tfrecords')
-
 
         # collecting test images paths info
         if not ops.exists(self._test_example_index_file_path):
@@ -212,104 +297,20 @@ class LaneNetDataProducer(object):
 
         log.info('Generating testing example tfrecords complete')
 
-        return
-
-    def _is_source_data_complete(self):
-        """
-        Check if source data complete
-        :return:
-        """
-        return \
-            ops.exists(self._gt_binary_image_dir) and \
-            ops.exists(self._gt_instance_image_dir) and \
-            ops.exists(self._gt_image_dir)
-
-    def _is_training_sample_index_file_complete(self):
-        """
-        Check if the training sample index file is complete
-        :return:
-        """
-        return \
-            ops.exists(self._train_example_index_file_path) \
-            and ops.exists(self._val_example_index_file_path)
-            # and ops.exists(self._test_example_index_file_path) and \
-
-    def _generate_training_example_index_file(self):
-        """
-        Generate training example index file, split source file into 0.85, 0.1, 0.05 for training,
-        testing and validation. Each image folder are processed separately
-        :return:
-        """
-
-        def _gather_example_info():
-            """
-
-            :return:
-            """
-            _info = []
-
-            for _gt_image_path in glob.glob('{:s}/*.png'.format(self._gt_image_dir)):
-                _gt_binary_image_name = ops.split(_gt_image_path)[1]
-                _gt_binary_image_path = ops.join(self._gt_binary_image_dir, _gt_binary_image_name)
-                _gt_instance_image_name = ops.split(_gt_image_path)[1]
-                _gt_instance_image_path = ops.join(self._gt_instance_image_dir, _gt_instance_image_name)
-
-                assert ops.exists(_gt_binary_image_path), '{:s} not exist'.format(_gt_binary_image_path)
-                assert ops.exists(_gt_instance_image_path), '{:s} not exist'.format(_gt_instance_image_path)
-
-                _info.append('{:s} {:s} {:s}\n'.format(
-                    _gt_image_path,
-                    _gt_binary_image_path,
-                    _gt_instance_image_path)
-                )
-
-            return _info
-
-        def _split_training_examples(_example_info):
-            random.shuffle(_example_info)
-
-            _example_nums = len(_example_info)
-
-            _train_example_info = _example_info[:int(_example_nums * 0.85)]
-            _val_example_info = _example_info[int(_example_nums * 0.85):int(_example_nums * 0.9)]
-            _test_example_info = _example_info[int(_example_nums * 0.9):]
-
-            return _train_example_info, _test_example_info, _val_example_info
-
-        train_example_info, test_example_info, val_example_info = _split_training_examples(_gather_example_info())
-
-        random.shuffle(train_example_info)
-        random.shuffle(test_example_info)
-        random.shuffle(val_example_info)
-
-        with open(ops.join(self._dataset_dir, 'train.txt'), 'w') as file:
-            file.write(''.join(train_example_info))
-
-        with open(ops.join(self._dataset_dir, 'test.txt'), 'w') as file:
-            file.write(''.join(test_example_info))
-
-        with open(ops.join(self._dataset_dir, 'val.txt'), 'w') as file:
-            file.write(''.join(val_example_info))
-
-        log.info('Generating training example index file complete')
-
-        return
-
-
 class LaneNetDataFeeder(object):
     """
     Read training examples from tfrecords for nsfw model
     """
-
     def __init__(self, dataset_dir, flags='train'):
         """
 
         :param dataset_dir:
         :param flags:
         """
-        self._dataset_dir = dataset_dir
 
+        self._dataset_dir = dataset_dir
         self._tfrecords_dir = ops.join(dataset_dir, 'tfrecords')
+
         if not ops.exists(self._tfrecords_dir):
             raise ValueError('{:s} not exist, please check again'.format(self._tfrecords_dir))
 
@@ -317,19 +318,17 @@ class LaneNetDataFeeder(object):
         if self._dataset_flags not in ['train', 'test', 'val']:
             raise ValueError('flags of the data feeder should be \'train\', \'test\', \'val\'')
 
-    def inputs(self, batch_size, num_epochs):
+    def inputs(self, batch_size, num_epochs=None):
         """
-        dataset feed pipline input
+
         :param batch_size:
         :param num_epochs:
         :return: A tuple (images, labels), where:
-                    * images is a float tensor with shape [batch_size, H, W, C]
-                      in the range [-0.5, 0.5].
-                    * labels is an int32 tensor with shape [batch_size] with the true label,
-                      a number in the range [0, CLASS_NUMS).
+                 * images is a float tensor with shape [N, H, W, C] in the range [-0.5, 0.5]
+                 * labels is an int32 tensor with shape [N] with the true label,
+                   a number in the range [0, CLASS_NUMS].
+
         """
-        if not num_epochs:
-            num_epochs = None
 
         tfrecords_file_paths = glob.glob('{:s}/{:s}*.tfrecords'.format(
             self._tfrecords_dir, self._dataset_flags)
@@ -337,21 +336,21 @@ class LaneNetDataFeeder(object):
         random.shuffle(tfrecords_file_paths)
 
         with tf.name_scope('input_tensor'):
-
             # TFRecordDataset opens a binary file and reads one record at a time.
             # `tfrecords_file_paths` could also be a list of filenames, which will be read in order.
             dataset = tf.data.TFRecordDataset(tfrecords_file_paths)
 
-            # The map transformation takes a function and applies it to every element
-            # of the dataset.
+            # The map transformation takes a function and applies it to every element of the dataset.
             dataset = dataset.map(map_func=tf_io_pipline_tools.decode,
                                   num_parallel_calls=CFG.TRAIN.CPU_MULTI_PROCESS_NUMS)
-            if self._dataset_flags != 'test':
+
+            if self._dataset_flags == 'train':
                 dataset = dataset.map(map_func=tf_io_pipline_tools.augment_for_train,
                                       num_parallel_calls=CFG.TRAIN.CPU_MULTI_PROCESS_NUMS)
             else:
                 dataset = dataset.map(map_func=tf_io_pipline_tools.augment_for_test,
                                       num_parallel_calls=CFG.TRAIN.CPU_MULTI_PROCESS_NUMS)
+
             dataset = dataset.map(map_func=tf_io_pipline_tools.normalize,
                                   num_parallel_calls=CFG.TRAIN.CPU_MULTI_PROCESS_NUMS)
 
@@ -359,7 +358,7 @@ class LaneNetDataFeeder(object):
             # in memory. The parameter is the number of elements in the buffer. For
             # completely uniform shuffling, set the parameter to be the same as the
             # number of elements in the dataset.
-            if self._dataset_flags != 'test':
+            if self._dataset_flags == 'train':
                 dataset = dataset.shuffle(buffer_size=1000)
                 # repeat num epochs
                 dataset = dataset.repeat()

@@ -6,7 +6,7 @@
 # @File    : generate_tusimple_dataset.py
 # @IDE: PyCharm Community Edition
 """
-处理tusimple数据集脚本
+处理 tusimple 数据集脚本
 """
 import argparse
 import glob
@@ -85,7 +85,7 @@ def process_json_file(json_file_path, src_dir, ori_dst_dir, binary_dst_dir, inst
                 cv2.polylines(dst_binary_image, lane_pts, isClosed=False,
                               color=255, thickness=5)
                 cv2.polylines(dst_instance_image, lane_pts, isClosed=False,
-                              color=lane_index * 50 + 20, thickness=5)
+                              color=lane_index * 50 + 40, thickness=5)
 
             if not labeled:
                 print('{} image has lane not labeled'.format(image_path))
@@ -100,7 +100,7 @@ def process_json_file(json_file_path, src_dir, ori_dst_dir, binary_dst_dir, inst
             cv2.imwrite(dst_rgb_image_path, src_image)
 
             print('Process {:s} success'.format(image_path))
-        print(count_unlabeled, 'has not labeled lane')
+        print(os.path.basename(json_file_path), count_unlabeled, 'has not labeled lane')
     start_index += tmp_index
     return start_index
 
@@ -140,9 +140,10 @@ def gen_train_sample(src_dir, b_gt_image_dir, i_gt_image_dir, image_dir):
                 file.write(info + '\n')
     return
 
+
 def gen_test_sample(src_dir, b_gt_image_dir, i_gt_image_dir, image_dir):
     """
-    生成图像训练列表
+    生成图像测试列表
     :param src_dir:
     :param b_gt_image_dir: 二值基准图
     :param i_gt_image_dir: 实例分割基准图
