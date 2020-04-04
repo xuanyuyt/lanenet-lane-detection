@@ -25,7 +25,7 @@ the input pipeline I implemented now need to be improved to achieve a real time 
 
 The trained lanenet model weights files are stored in 
 [new_lanenet_model_file](https://www.dropbox.com/sh/tnsf0lw6psszvy4/AAA81r53jpUI3wLsRW6TiPCya?dl=0). You can 
-download the model and put them in folder model/tusimple_lanenet/
+download the model and put them in folder model/tusimple_lanenet_vgg/
 
 You can test a single image on the trained model as follows
 
@@ -55,7 +55,7 @@ If you want to evaluate the model on the whole tusimple test dataset you may cal
 ```
 python tools/evaluate_lanenet_on_tusimple.py 
 --image_dir ROOT_DIR/TUSIMPLE_DATASET/test_set/clips 
---weights_path ./model/tusimple_lanenet_vgg/tusimple_lanenet.ckpt 
+--weights_path ./model/tusimple_lanenet_vgg/tusimple_lanenet_vgg.ckpt 
 --save_dir ROOT_DIR/TUSIMPLE_DATASET/test_set/test_output
 ```
 If you set the save_dir argument the result will be saved in that folder 
@@ -83,7 +83,7 @@ Use the script here to generate the tensorflow records file
 ```
 python data_provider/lanenet_data_feed_pipline.py 
 --dataset_dir ./data/training_data_example
---save_dir ./data/training_data_example/tfrecords
+--tfrecords_dir ./data/training_data_example/tfrecords
 ```
 
 #### Train model
@@ -171,6 +171,27 @@ script on your own.
 
 New model weights can be found [here](https://www.dropbox.com/sh/tnsf0lw6psszvy4/AAA81r53jpUI3wLsRW6TiPCya?dl=0)
 
+## MNN Project
+
+Add tools to convert lanenet tensorflow ckpt model into mnn model and deploy
+the model on mobile device
+
+#### Freeze your tensorflow ckpt model weights file
+```
+cd LANENET_PROJECT_ROOT_DIR
+python mnn_project/freeze_lanenet_model.py -w lanenet.ckpt -s lanenet.pb
+```
+
+#### Convert pb model into mnn model
+```
+cd MNN_PROJECT_ROOT_DIR/tools/converter/build
+./MNNConver -f TF --modelFile lanenet.pb --MNNModel lanenet.mnn --bizCode MNN
+```
+
+#### Add lanenet source code into MNN project 
+
+Add lanenet source code into MNN project and modified CMakeList.txt to 
+compile the executable binary file.
 
 ## TODO
 - [x] Add a embedding visualization tools to visualize the embedding feature map
@@ -178,3 +199,10 @@ New model weights can be found [here](https://www.dropbox.com/sh/tnsf0lw6psszvy4
 - [x] Training the model on different dataset
 - ~~[ ] Adjust the lanenet hnet model and merge the hnet model to the main lanenet model~~
 - ~~[ ] Change the normalization function from BN to GN~~
+
+## Acknowledgement
+
+The lanenet project refers to the following projects:
+
+- [MNN](https://github.com/alibaba/MNN)
+- [SimpleDBSCAN](https://github.com/CallmeNezha/SimpleDBSCAN)
